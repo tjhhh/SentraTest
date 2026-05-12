@@ -10,6 +10,14 @@ Sistem HARUS mampu memproses potongan kode untuk menghasilkan test case berdasar
 - *WHEN* pengguna menginput potongan kode JavaScript/Node.js.
 - *THEN* sistem menggunakan Gemini API untuk menghasilkan skenario pengujian yang memenuhi kriteria coverage tersebut.
 
+### Requirement: White Box Analysis Interface
+Sistem MUST memungkinkan pengguna untuk mengunggah atau menempelkan potongan kode untuk analisis coverage.
+
+#### Scenario: Analyze Source Code
+- **WHEN** pengguna memasukkan kode sumber dan memilih coverage "Branch"
+- **THEN** sistem SHALL memanggil endpoint `/api/wb/analyze`
+- **THEN** sistem SHALL menampilkan hasil analisis coverage pada UI
+
 ### Requirement: Playwright Script Generation
 Sistem HARUS menghasilkan script automation berbasis Playwright yang valid.
 

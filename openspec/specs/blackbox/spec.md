@@ -10,6 +10,14 @@ Sistem HARUS memandu pengguna melalui alur pemilihan tipe pengujian sebelum mela
 - WHEN pengguna memilih kategori "Blackbox Testing"
 - THEN sistem menampilkan pilihan tipe: BVA (Boundary Value Analysis), EQP (Equivalence Partitioning), dan DT (Decision Table)
 
+### Requirement: Black Box Test Generation UI
+Sistem MUST menyediakan form untuk input requirement dan pemilihan metode pengujian black box (BVA, EQP, DT).
+
+#### Scenario: Generate Black Box Testcase
+- **WHEN** pengguna memilih metode "BVA" dan memasukkan deskripsi fitur lalu menekan tombol generate
+- **THEN** sistem SHALL memanggil endpoint `/api/bb/generate`
+- **THEN** sistem SHALL menampilkan hasil tabel testcase pada UI
+
 ### Requirement: Generate Test Cases from Requirements
 Sistem HARUS menghasilkan test case berdasarkan input teks requirement.
 

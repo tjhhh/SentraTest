@@ -22,3 +22,11 @@ Sistem MUST menyediakan manifest Kubernetes baseline untuk deployment backend se
 #### Scenario: Apply manifests
 - **WHEN** manifest Kubernetes baseline diterapkan pada cluster yang valid
 - **THEN** sistem SHALL membuat resource minimum yang dibutuhkan untuk menjalankan backend secara operasional
+
+### Requirement: Multi-format Result Export
+Sistem MUST menyediakan opsi bagi pengguna untuk mengunduh hasil pengujian dalam format PDF, JSON, atau ZIP.
+
+#### Scenario: Download Export File
+- **WHEN** pengguna memilih format "JSON" dan menekan tombol download
+- **THEN** sistem SHALL memanggil endpoint export yang sesuai
+- **THEN** sistem SHALL memicu pengunduhan file ke komputer pengguna
