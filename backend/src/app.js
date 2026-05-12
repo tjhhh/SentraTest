@@ -4,6 +4,8 @@ const cors = require("cors");
 const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const path = require("path");
+const fs = require("fs");
 
 const { env } = require("./config/env");
 const { httpLogger } = require("./config/logger");
@@ -37,6 +39,13 @@ app.use(
   })
 );
 app.use(express.json({ limit: "2mb" }));
+
+// Serve screenshots directory
+const screenshotsDir = path.join(__dirname, "screenshots");
+if (!fs.existsSync(screenshotsDir)) {
+  fs.mkdirSync(screenshotsDir, { recursive: true });
+}
+app.use("/screenshots", express.static(screenshotsDir));
 
 app.use("/api", apiRouter);
 app.use(notFoundHandler);

@@ -3,12 +3,18 @@ const express = require("express");
 const { authMiddleware } = require("../../middlewares/authMiddleware");
 const { validate } = require("../../middlewares/validate");
 const { generationLimiter } = require("../../middlewares/rateLimiters");
-const { analyze, script } = require("./whitebox.controller");
+const { analyze, script, generate, run } = require("./whitebox.controller");
 const { analyzeSchema, scriptSchema } = require("./whitebox.schema");
 
 const router = express.Router();
 
-router.use(authMiddleware);
+// Public endpoints (no auth required for testing)
+router.post("/generate", generationLimiter, generate);
+router.post("/run", generationLimiter, run);
+
+// Protected endpoints (require auth)
+router.post("/analyze", authMiddleware, generationLimiter, validate(analyzeSchema), analyze);
+router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema), script);
 
 /**
  * @openapi
@@ -32,7 +38,6 @@ router.use(authMiddleware);
  *       200:
  *         description: Analisis berhasil dilakukan
  */
-router.post("/analyze", generationLimiter, validate(analyzeSchema), analyze);
 
 /**
  * @openapi
@@ -54,6 +59,6 @@ router.post("/analyze", generationLimiter, validate(analyzeSchema), analyze);
  *       200:
  *         description: Script berhasil digenerate
  */
-router.post("/script", generationLimiter, validate(scriptSchema), script);
+router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema), script);
 
 module.exports = { whiteboxRoutes: router };

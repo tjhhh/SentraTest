@@ -1,36 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Code2, 
-  Terminal, 
   Play, 
   Settings, 
   Cpu, 
-  CheckCircle2, 
-  XCircle,
   Loader2,
-  Copy,
   Terminal as TerminalIcon,
-  Download
+  Eye,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { wbService } from '@/services/wb.service';
-import { exportService } from '@/services/export.service';
-import { useConversationStore } from '@/store/conversationStore';
-import { downloadFromBase64 } from '@/utils/download';
-import { CoverageType } from '@/types/whitebox';
-import { useNotificationStore } from '@/store/notificationStore';
+import { TestTimeline } from '@/components/TestTimeline';
+import { EvidenceGallery } from '@/components/EvidenceGallery';
+import TestResults, { TestStats, TestResult } from '@/components/TestResults';
 
-const coverageTypes: { id: CoverageType; name: string; description: string }[] = [
-  { id: 'STATEMENT', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
-  { id: 'BRANCH', name: 'Branch Coverage', description: 'Tests all possible paths through conditional branches.' },
-  { id: 'PATH', name: 'Path Coverage', description: 'Tests every possible combination of paths.' },
+const coverageTypes = [
+  { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
+  { id: 'branch', name: 'Branch Coverage', description: 'Tests all possible paths through conditional branches.' },
+  { id: 'path', name: 'Path Coverage', description: 'Tests every possible combination of paths.' },
 ];
 
+interface TestStep {
+  type: string;
+  description: string;
+  status: 'pending' | 'success' | 'failure';
+}
+
 export default function WhiteboxPage() {
-  const { activeConversation, createConversation } = useConversationStore();
-  const [code, setCode] = useState(`function calculateDiscount(price, type) {
+  const apiBaseRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const apiBase = apiBaseRaw.replace(/\/+$/, '');
+  const buildApiUrl = (path: string) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (apiBase.endsWith('/api')) {
+      return `${apiBase}${normalizedPath}`;
+    }
+    return `${apiBase}/api${normalizedPath}`;
+  };
+
+  const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {
     if (type === 'VIP') {
       return price * 0.8;
@@ -39,251 +48,299 @@ export default function WhiteboxPage() {
   }
   return price;
 }`);
-  const [selectedCoverage, setSelectedCoverage] = useState<'STATEMENT'|'BRANCH'|'PATH'>('BRANCH');
+  const [uiCode, setUiCode] = useState(`<button id="calculate-btn">Calculate</button>
+<div id="result"></div>`);
+  const [selectedCoverage, setSelectedCoverage] = useState('branch');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [steps, setSteps] = useState<TestStep[]>([]);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [testResults, setTestResults] = useState<{ stats: TestStats; tests: TestResult[] } | null>(null);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
-  const handleAnalyze = async () => {
-    if (!code.trim()) return;
+  const sandboxSrcDoc = useMemo(() => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: sans-serif; padding: 20px; background: #f8fafc; }
+            button { padding: 8px 16px; background: #4f46e5; color: white; border: none; rounded: 4px; cursor: pointer; }
+            #result { margin-top: 10px; padding: 10px; background: white; border: 1px solid #e2e8f0; min-height: 20px; }
+          </style>
+        </head>
+        <body>
+          ${uiCode}
+          <script>${logicCode}</script>
+        </body>
+      </html>
+    `;
+  }, [uiCode, logicCode]);
+
+  const handleProcess = async () => {
     setIsProcessing(true);
-    setOutput(prev => [...prev, `> Starting ${selectedCoverage} analysis...`]);
+    setSteps([]);
+    setScreenshots([]);
+    setTestResults(null);
+    setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
-      let conversationId = activeConversation?.id;
-      if (!conversationId) {
-        const newConv = await createConversation(`WB Analysis: ${selectedCoverage}`);
-        conversationId = newConv.id;
+      const response = await fetch(buildApiUrl('/wb/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logicCode, uiCode, coverageType: selectedCoverage }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); 
+        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to generate script');
       }
 
-      const response = await wbService.analyze({
-        conversationId,
-        coverageType: selectedCoverage,
-        sourceCode: code
-      });
+      const payload = await response.json();
+      const data = payload?.data || payload;
       
-      setAnalysisResult(response);
-      setOutput(prev => [
-        ...prev, 
-        `> Analysis complete. Found ${((response.content as any)?.paths?.length ?? (response.content as any)?.summary?.paths?.length ?? 0)} logical paths.`,
-        `> Coverage health: ${response.content?.summary?.coveragePercentage || 100}%`
-      ]);
+      if (data.testTitles) {
+        setTestResults({
+          stats: { total: data.testTitles.length, passed: 0, failed: 0, skipped: 0, duration: 0 },
+          tests: data.testTitles.map((title: string) => ({ title, status: 'pending', duration: 0 }))
+        });
+      }
 
-      useNotificationStore.getState().addNotification({
-        type: "success",
-        title: "Analysis Complete",
-        message: "Source code analysis finished successfully.",
-      });
-    } catch (err: any) {
-      setOutput(prev => [...prev, `[ERROR] Analysis failed: ${err.message}`]);
+      setOutput(prev => [...prev, `> Analysis complete. ${data.testTitles?.length || 0} test cases generated.`]);
+    } catch (error: any) {
+      console.error(error);
+      setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleGenerateScript = async () => {
-    if (!analysisResult) return;
-    setIsProcessing(true);
-    setOutput(prev => [...prev, '> Generating Playwright test scripts...']);
-
-    try {
-      const response = await wbService.script(analysisResult.content);
-      setOutput(prev => [...prev, `> Script generated successfully (playwright.spec.js)`]);
-      
-      // Auto-export as ZIP if script is ready
-      const exp = await exportService.zip({
-        format: 'ZIP',
-        fileName: `whitebox-test-${Date.now()}`,
-        payload: {
-          sourceCode: code,
-          analysis: analysisResult.content,
-          script: response.script
-        }
-      });
-      downloadFromBase64(exp.base64, exp.fileName, exp.contentType);
-      setOutput(prev => [...prev, `> Exported test bundle: ${exp.fileName}`]);
-    } catch (err: any) {
-      setOutput(prev => [...prev, `[ERROR] Script generation failed: ${err.message}`]);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleRun = () => {
+  const handleRun = async () => {
     setIsRunning(true);
-    setOutput(prev => [...prev, '> Initializing Playwright test runner...']);
+    setSteps([]);
+    setScreenshots([]);
+    setTestResults(null);
+    setOutput(['> Starting Playwright Runner...']);
     
-    setTimeout(() => {
-      setOutput(prev => [
-        ...prev, 
-        '[INFO] Running Path 1: (price > 100, type = VIP) ... PASS',
-        '[INFO] Running Path 2: (price > 100, type != VIP) ... PASS',
-        '[INFO] Running Path 3: (price <= 100) ... PASS',
-        '> Execution Finished. All tests passed successfully.'
-      ]);
+    try {
+      const response = await fetch(buildApiUrl('/wb/run'), {
+        method: 'POST',
+      });
+
+      if (!response.ok) throw new Error('Failed to run tests');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        
+        lines.forEach(line => {
+          if (line.trim() === '') return;
+          
+          setOutput(prev => [...prev, line]);
+
+          // Parse Steps
+          const stepMatch = line.match(/\[STEP: (.*?)\] (.*)/);
+          if (stepMatch) {
+            setSteps(prev => [...prev, {
+              type: stepMatch[1],
+              description: stepMatch[2],
+              status: 'success'
+            }]);
+          }
+
+          // Detect Failures in Logs
+          if (line.includes('✘') || line.includes('FAILED')) {
+            setSteps(prev => {
+              if (prev.length > 0) {
+                const last = [...prev];
+                last[last.length - 1].status = 'failure';
+                return last;
+              }
+              return prev;
+            });
+          }
+
+          // Parse Screenshots
+          const evidenceMatch = line.match(/\[EVIDENCE: SCREENSHOTS\] (.*)/);
+          if (evidenceMatch) {
+            const files = evidenceMatch[1].split(',').filter(f => f.trim() !== '');
+            if (files.length === 0 && steps.some(s => s.status === 'failure')) {
+               setOutput(prev => [...prev, '[SYSTEM] No screenshots captured due to test failure.']);
+            }
+            setScreenshots(files);
+          }
+
+          // Parse JSON Results
+          const resultMatch = line.match(/\[RESULT: JSON\] (.*)/);
+          if (resultMatch) {
+            try {
+              const data = JSON.parse(resultMatch[1]);
+              setTestResults(data);
+            } catch (err) {
+              console.error('Failed to parse result JSON', err);
+            }
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error(error);
+      setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
+    } finally {
       setIsRunning(false);
-    }, 2000);
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-900">Whitebox Test Generator</h1>
-        <p className="text-sm text-slate-500">Analyze source code and generate automated Playwright scripts.</p>
+    <div className="max-w-7xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 p-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sentra Sandbox</h1>
+          <p className="text-slate-500 mt-1">Visual Automated Testing for Logic & UI.</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleProcess}
+            disabled={isProcessing}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
+            Generate Tests
+          </button>
+          <button
+            onClick={handleRun}
+            disabled={isRunning || output.length <= 2}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Run Suite
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Editors */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                </div>
-                <span className="ml-2 text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Source Editor</span>
-              </div>
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(code);
-                  alert('Code copied!');
-                }}
-                className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Logic & UI Editor</span>
             </div>
-            <div className="p-0">
-              <textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full h-64 md:h-80 p-4 md:p-6 bg-slate-900 text-indigo-300 font-mono text-xs md:text-sm outline-none resize-none leading-relaxed"
-                spellCheck={false}
-              />
-            </div>
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                {!analysisResult ? (
-                  <button
-                    onClick={handleAnalyze}
-                    disabled={isProcessing}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all"
-                  >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-                    Analyze
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleGenerateScript}
-                    disabled={isProcessing}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all"
-                  >
-                    {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Code2 className="w-4 h-4" />}
-                    Script
-                  </button>
-                )}
-                <button
-                  onClick={handleRun}
-                  disabled={isRunning || !analysisResult}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all"
-                >
-                  {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                  Run
-                </button>
+            <div className="flex-1 flex flex-col">
+              <div className="h-1/2 border-b border-slate-100 relative">
+                <span className="absolute top-3 right-4 text-[10px] font-bold text-slate-400 uppercase z-10 bg-slate-900/50 px-2 py-1 rounded text-white">JavaScript</span>
+                <textarea
+                  value={logicCode}
+                  onChange={(e) => setLogicCode(e.target.value)}
+                  className="w-full h-full p-6 bg-slate-900 text-indigo-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                  spellCheck={false}
+                />
               </div>
-              <span className="text-[10px] text-slate-400 text-center sm:text-right">JS | Lines: {code.split('\n').length}</span>
+              <div className="h-1/2 relative">
+                <span className="absolute top-3 right-4 text-[10px] font-bold text-slate-400 uppercase z-10 bg-slate-800/50 px-2 py-1 rounded text-white">HTML / UI</span>
+                <textarea
+                  value={uiCode}
+                  onChange={(e) => setUiCode(e.target.value)}
+                  className="w-full h-full p-6 bg-slate-800 text-emerald-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                  spellCheck={false}
+                  placeholder="Paste UI snippet here..."
+                />
+              </div>
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-3 border-b border-slate-800 flex items-center justify-between text-slate-400">
-              <div className="flex items-center gap-2">
-                <TerminalIcon className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Terminal</span>
-              </div>
-              <button 
-                onClick={() => setOutput([])}
-                className="text-[10px] hover:text-white transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="p-4 md:p-6 h-40 md:h-48 overflow-y-auto font-mono text-[10px] md:text-xs space-y-1.5 custom-scrollbar">
-              {output.length === 0 ? (
-                <p className="text-slate-600 italic text-[10px]">No output yet. Analyze code to see results.</p>
-              ) : (
-                output.map((line, i) => (
-                  <p key={i} className={cn(
-                    line.startsWith('>') ? "text-indigo-400" : 
-                    line.includes('PASS') ? "text-green-400" : 
-                    line.includes('ERROR') || line.includes('FAIL') ? "text-red-400" : "text-slate-300"
-                  )}>
-                    {line}
-                  </p>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Settings className="w-5 h-5 text-indigo-600" />
               Coverage Settings
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {coverageTypes.map((type) => (
                 <button
                   key={type.id}
                   onClick={() => setSelectedCoverage(type.id)}
                   className={cn(
-                    "w-full text-left p-4 rounded-xl border transition-all duration-200",
+                    "text-left p-3 rounded-xl border transition-all duration-200",
                     selectedCoverage === type.id
                       ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200"
                       : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                   )}
                 >
-                  <p className={cn(
-                    "font-semibold text-sm",
-                    selectedCoverage === type.id ? "text-indigo-700" : "text-slate-900"
-                  )}>
+                  <p className={cn("font-semibold text-sm", selectedCoverage === type.id ? "text-indigo-700" : "text-slate-900")}>
                     {type.name}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {type.description}
                   </p>
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              Test Health
-            </h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-sm text-slate-500 font-medium">Predicted Coverage</span>
-                <span className="text-lg font-bold text-slate-900">
-                  {analysisResult ? '100%' : '0%'}
-                </span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-indigo-600 h-full rounded-full transition-all duration-1000" 
-                  style={{ width: analysisResult ? '100%' : '0%' }}
-                />
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {analysisResult 
-                  ? 'All branches covered by the generated test cases.' 
-                  : 'Analyze your code to calculate coverage health.'}
-              </p>
+        {/* Right Column: Preview & Results */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[500px] flex flex-col">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Live Sandbox Preview</span>
             </div>
+            <div className="flex-1 bg-slate-100 p-4">
+              <iframe 
+                srcDoc={sandboxSrcDoc}
+                className="w-full h-full bg-white rounded-lg border border-slate-200 shadow-inner"
+                title="Sandbox"
+              />
+            </div>
+          </div>
+
+          {testResults && (
+            <div className="h-[400px]">
+              <TestResults results={testResults} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-[500px]">
+              <TestTimeline steps={steps} />
+            </div>
+            <div className="h-[500px]">
+              <EvidenceGallery screenshots={screenshots} />
+            </div>
+          </div>
+
+          {/* Collapsible Terminal */}
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+            <button 
+              onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+              className="w-full p-4 flex items-center justify-between text-slate-400 hover:bg-slate-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <TerminalIcon className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-widest">Full Execution Logs</span>
+              </div>
+              {isTerminalOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            {isTerminalOpen && (
+              <div className="p-6 h-48 overflow-y-auto font-mono text-xs space-y-1.5 custom-scrollbar border-t border-slate-800">
+                {output.length === 0 ? (
+                  <p className="text-slate-600 italic">Waiting for execution...</p>
+                ) : (
+                  output.map((line, i) => (
+                    <p key={i} className={cn(
+                      line.startsWith('>') ? "text-indigo-400" : 
+                      line.includes('PASS') ? "text-green-400" : 
+                      line.includes('FAIL') ? "text-red-400" : "text-slate-500"
+                    )}>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

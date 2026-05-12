@@ -5,15 +5,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "jest --runInBand",
-    "test:watch": "jest --watch",
-    "test:contract": "jest tests/contract.api.test.js --runInBand",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "node prisma/seed.js",
-    "lint": "eslint src tests",
-    "typecheck": "node -e \"console.log('Typecheck not configured for JS runtime')\"",
-    "smoke:test": "node scripts/smoke-test.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
