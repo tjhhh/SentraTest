@@ -180,6 +180,9 @@ function generateSandboxHTML(logic, ui) {
 async function runTestScript(screenshotsDirPath) {
   return new Promise((resolve, reject) => {
     const resultsPath = path.join(__dirname, "test-results.json");
+    const testFilePath = path.join(__dirname, "temp-test.spec.js");
+    const backendRoot = path.resolve(__dirname, "../../../");
+    const relativeTestPath = path.relative(backendRoot, testFilePath);
 
     // Clean up old screenshots and results
     if (fs.existsSync(screenshotsDirPath)) {
@@ -195,8 +198,11 @@ async function runTestScript(screenshotsDirPath) {
       fs.unlinkSync(resultsPath);
     }
 
-    const child = spawn("npx", ["playwright", "test", "temp-test.spec.js", "--reporter=json,list"], {
+    const normalizedPath = relativeTestPath.replace(/\\/g, "/");
+
+    const child = spawn("npx", ["playwright", "test", normalizedPath, "--reporter=json,list"], {
       shell: true,
+      cwd: backendRoot,
       env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: resultsPath },
     });
 

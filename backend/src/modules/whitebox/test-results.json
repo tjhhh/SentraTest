@@ -9,14 +9,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 1
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "D:/SentraTest/backend/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "",
         "name": "",
         "testDir": "D:/SentraTest/backend",
@@ -48,37 +52,244 @@
     "workers": 8,
     "webServer": null
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "Error: Cannot find module '@playwright/test'\nRequire stack:\n- D:\\SentraTest\\backend\\src\\modules\\whitebox\\temp-test.spec.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\common\\index.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\program.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\cli.js",
-      "stack": "Error: Cannot find module '@playwright/test'\nRequire stack:\n- D:\\SentraTest\\backend\\src\\modules\\whitebox\\temp-test.spec.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\common\\index.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\program.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\cli.js\n    at Object.<anonymous> (D:\\SentraTest\\backend\\src\\modules\\whitebox\\temp-test.spec.js:1:26)",
-      "location": {
-        "file": "D:\\SentraTest\\backend\\src\\modules\\whitebox\\temp-test.spec.js",
-        "column": 26,
-        "line": 1
-      },
-      "snippet": "\u001b[90m   at \u001b[39msrc\\modules\\whitebox\\temp-test.spec.js:1\n\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 1 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 2 |\u001b[39m \u001b[36mconst\u001b[39m path \u001b[33m=\u001b[39m require(\u001b[32m'path'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 3 |\u001b[39m\n \u001b[90m 4 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Checkout Page Logic Coverage'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\u001b[0m"
-    },
-    {
-      "message": "Error: Cannot find module '@playwright/test'\nRequire stack:\n- D:\\SentraTest\\backend\\temp-test.spec.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\common\\index.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\program.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\cli.js",
-      "stack": "Error: Cannot find module '@playwright/test'\nRequire stack:\n- D:\\SentraTest\\backend\\temp-test.spec.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\common\\index.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\lib\\program.js\n- C:\\Users\\nhqkb\\AppData\\Local\\npm-cache\\_npx\\e41f203b7505f1fb\\node_modules\\playwright\\cli.js\n    at Object.<anonymous> (D:\\SentraTest\\backend\\temp-test.spec.js:1:26)",
-      "location": {
-        "file": "D:\\SentraTest\\backend\\temp-test.spec.js",
-        "column": 26,
-        "line": 1
-      },
-      "snippet": "\u001b[90m   at \u001b[39mtemp-test.spec.js:1\n\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 1 |\u001b[39m \u001b[36mconst\u001b[39m { test\u001b[33m,\u001b[39m expect } \u001b[33m=\u001b[39m require(\u001b[32m'@playwright/test'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 2 |\u001b[39m \u001b[36mconst\u001b[39m path \u001b[33m=\u001b[39m require(\u001b[32m'path'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 3 |\u001b[39m\n \u001b[90m 4 |\u001b[39m test\u001b[33m.\u001b[39mdescribe(\u001b[32m'Checkout Logic Statement Coverage'\u001b[39m\u001b[33m,\u001b[39m () \u001b[33m=>\u001b[39m {\u001b[0m"
-    },
-    {
-      "message": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments.",
-      "stack": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments."
+      "title": "src\\modules\\whitebox\\temp-test.spec.js",
+      "file": "src/modules/whitebox/temp-test.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Checkout Page Logic Coverage",
+          "file": "src/modules/whitebox/temp-test.spec.js",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Valid Inputs: Should calculate and display total correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 950,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] filling price input with 10000\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] filling qty input with 5\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking #check-btn\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T19:21:50.181Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b5a580a58ebeed61d2f2-cbfd09879643db96be2b",
+              "file": "src/modules/whitebox/temp-test.spec.js",
+              "line": 6,
+              "column": 5
+            },
+            {
+              "title": "Invalid Input: Empty price should trigger validation error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 705,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] filling qty input with 5\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking #check-btn with empty price\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T19:21:51.250Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b5a580a58ebeed61d2f2-1b10e7575fff80b2befb",
+              "file": "src/modules/whitebox/temp-test.spec.js",
+              "line": 25,
+              "column": 5
+            },
+            {
+              "title": "Invalid Input: Zero price should trigger validation error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 723,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] filling price input with 0\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] filling qty input with 10\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking #check-btn\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T19:21:51.971Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b5a580a58ebeed61d2f2-8183b472b0942040506d",
+              "file": "src/modules/whitebox/temp-test.spec.js",
+              "line": 41,
+              "column": 5
+            },
+            {
+              "title": "Invalid Input: Negative quantity should trigger validation error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 806,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] filling price input with 500\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] filling qty input with -1\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking #check-btn\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T19:21:52.704Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b5a580a58ebeed61d2f2-6d0ef63ab9135e67aeb6",
+              "file": "src/modules/whitebox/temp-test.spec.js",
+              "line": 59,
+              "column": 5
+            },
+            {
+              "title": "Invalid Input: Empty quantity should trigger validation error",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 727,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] filling price input with 500\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking #check-btn with empty quantity\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T19:21:53.519Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b5a580a58ebeed61d2f2-31c1b1dbf0ae2e5907d7",
+              "file": "src/modules/whitebox/temp-test.spec.js",
+              "line": 77,
+              "column": 5
+            }
+          ]
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-05-12T19:10:44.493Z",
-    "duration": 117.25900000000001,
-    "expected": 0,
+    "startTime": "2026-05-12T19:21:49.650Z",
+    "duration": 4688.034,
+    "expected": 5,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

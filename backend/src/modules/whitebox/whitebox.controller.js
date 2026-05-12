@@ -53,9 +53,6 @@ async function run(req, res, next) {
       fs.mkdirSync(screenshotsDir, { recursive: true });
     }
 
-    res.setHeader("Content-Type", "text/plain");
-    res.setHeader("Transfer-Encoding", "chunked");
-
     const result = await service.runTestScript(screenshotsDir);
 
     // Send results as JSON
