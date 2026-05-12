@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sandbox</title>
+    
+    <script>
+        // mathUtils.js
+function calculateTotal(price, qty) {
+    const p = parseFloat(price);
+    const q = parseInt(qty);
+
+    if (isNaN(p) || isNaN(q) || p <= 0 || q <= 0) {
+        return null;
+    }
+    return p * q;
+}
+
+// Export agar bisa digunakan di file lain (atau via script tag)
+if (typeof module !== 'undefined') {
+    module.exports = { calculateTotal };
+}
+    </script>
+</head>
+<body>
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Playwright Test - Separate Files</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-10">
+    <div class="max-w-md mx-auto bg-white p-6 rounded shadow">
+        <h2 class="text-xl font-bold mb-4">Checkout Page</h2>
+        
+        <input type="number" id="price" placeholder="Harga" class="w-full border mb-2 p-2">
+        <input type="number" id="qty" placeholder="Jumlah" class="w-full border mb-4 p-2">
+        
+        <button id="check-btn" class="w-full bg-indigo-600 text-white py-2 rounded">Check Total</button>
+        
+        <p id="display" class="mt-4 font-semibold text-center"></p>
+    </div>
+
+    <script src="mathUtils.js"></script>
+    <script>
+        const btn = document.getElementById('check-btn');
+        const display = document.getElementById('display');
+
+        btn.onclick = () => {
+            const price = document.getElementById('price').value;
+            const qty = document.getElementById('qty').value;
+            
+            // Memanggil fungsi dari file eksternal
+            const total = calculateTotal(price, qty);
+
+            if (total === null) {
+                display.innerText = "Input Tidak Valid";
+                display.style.color = "red";
+            } else {
+                display.innerText = "Total: Rp " + total.toLocaleString('id-ID');
+                display.style.color = "green";
+            }
+        };
+    </script>
+</body>
+</html>
+</body>
+</html>
+  

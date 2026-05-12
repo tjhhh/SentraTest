@@ -19,7 +19,7 @@ const coverageTypes = [
 ];
 
 export default function WhiteboxPage() {
-  const [code, setCode] = useState(`function calculateDiscount(price, type) {
+  const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {
     if (type === 'VIP') {
       return price * 0.8;
@@ -28,6 +28,8 @@ export default function WhiteboxPage() {
   }
   return price;
 }`);
+  const [uiCode, setUiCode] = useState(`<button id="calculate-btn">Calculate</button>
+<div id="result"></div>`);
   const [selectedCoverage, setSelectedCoverage] = useState('branch');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -35,31 +37,26 @@ export default function WhiteboxPage() {
 
   const handleProcess = async () => {
     setIsProcessing(true);
-    setOutput(['> Analysis starting...', '> Sending code to Gemini API...']);
+    setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/generate`, {
-        
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code : code, coverageType: selectedCoverage }),
+        body: JSON.stringify({ logicCode, uiCode, coverageType: selectedCoverage }),
       });
 
       if (!response.ok) {
-      // Ambil detail error dari backend (asumsi backend kirim JSON)
-      const errorData = await response.json().catch(() => ({})); 
-      const errorMessage = errorData.message || `Error: ${response.status} ${response.statusText}`;
-      
-      console.error("Detail Error Backend:", errorData); // Cek di console browser
-      throw new Error(errorMessage);
-    }
+        const errorData = await response.json().catch(() => ({})); 
+        throw new Error(errorData.error || 'Failed to generate script');
+      }
 
       const data = await response.json();
-      setOutput(prev => [...prev, '> Analysis complete. Playwright script generated.']);
+      setOutput(prev => [...prev, '> Analysis complete. UI-aware Playwright script generated.']);
       console.log('Generated Script:', data.script);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setOutput(prev => [...prev, '[ERROR] Failed to generate script. Check backend logs.']);
+      setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
     } finally {
       setIsProcessing(false);
     }
@@ -70,7 +67,7 @@ export default function WhiteboxPage() {
     setOutput(prev => [...prev, '> Starting Playwright Runner...']);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/whitebox/run`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/run`, {
         method: 'POST',
       });
 
@@ -88,9 +85,9 @@ export default function WhiteboxPage() {
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
         setOutput(prev => [...prev, ...lines]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setOutput(prev => [...prev, '[ERROR] Failed to execute tests.']);
+      setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
     } finally {
       setIsRunning(false);
     }
@@ -99,8 +96,8 @@ export default function WhiteboxPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Whitebox Test Generator</h1>
-        <p className="text-slate-500">Analyze source code and generate automated Playwright scripts.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Universal Whitebox Sandbox</h1>
+        <p className="text-slate-500">Analyze logic and UI to generate automated interaction tests.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -113,20 +110,36 @@ export default function WhiteboxPage() {
                   <div className="w-3 h-3 rounded-full bg-amber-400" />
                   <div className="w-3 h-3 rounded-full bg-green-400" />
                 </div>
-                <span className="ml-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Source Code Editor</span>
+                <span className="ml-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Logic (JavaScript)</span>
               </div>
-              <button className="text-slate-400 hover:text-indigo-600 transition-colors">
-                <Copy className="w-4 h-4" />
-              </button>
             </div>
             <div className="p-0">
               <textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full h-80 p-6 bg-slate-900 text-indigo-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                value={logicCode}
+                onChange={(e) => setLogicCode(e.target.value)}
+                className="w-full h-48 p-6 bg-slate-900 text-indigo-300 font-mono text-sm outline-none resize-none leading-relaxed"
                 spellCheck={false}
               />
             </div>
+            
+            <div className="p-4 border-b border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-indigo-400" />
+                </div>
+                <span className="ml-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">UI (HTML / Framework Snippets)</span>
+              </div>
+            </div>
+            <div className="p-0">
+              <textarea
+                value={uiCode}
+                onChange={(e) => setUiCode(e.target.value)}
+                className="w-full h-48 p-6 bg-slate-800 text-emerald-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                spellCheck={false}
+                placeholder="Paste HTML or Framework snippets here..."
+              />
+            </div>
+
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
@@ -135,7 +148,7 @@ export default function WhiteboxPage() {
                   className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all"
                 >
                   {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-                  Generate Script
+                  Generate Interaction Script
                 </button>
                 <button
                   onClick={handleRun}
@@ -146,7 +159,6 @@ export default function WhiteboxPage() {
                   Run Tests
                 </button>
               </div>
-              <span className="text-xs text-slate-400">Lines: {code.split('\\n').length} | Language: JavaScript</span>
             </div>
           </div>
 

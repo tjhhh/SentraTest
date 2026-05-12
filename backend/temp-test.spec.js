@@ -1,76 +1,66 @@
 const { test, expect } = require('@playwright/test');
+const path = require('path');
 
-const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discount Testing Page</title>
-    <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .container { max-width: 300px; border: 1px solid #ccc; padding: 20px; border-radius: 8px; }
-        input, select, button { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
-        #result { font-weight: bold; color: #4f46e5; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h3>Discount Calculator</h3>
-        <label for="price">Price:</label>
-        <input type="number" id="price" placeholder="Enter price">
-        <label for="type">Customer Type:</label>
-        <select id="type">
-            <option value="REGULAR">Regular</option>
-            <option value="VIP">VIP</option>
-        </select>
-        <button id="calculate-btn">Calculate</button>
-        <p>Final Price: <span id="result">0</span></p>
-    </div>
-    <script>
-        function calculateDiscount(price, type) {
-            if (price > 100) {
-                if (type === 'VIP') {
-                    return price * 0.8;
-                }
-                return price * 0.9;
-            }
-            return price;
-        }
-        document.getElementById('calculate-btn').addEventListener('click', () => {
-            const price = parseFloat(document.getElementById('price').value);
-            const type = document.getElementById('type').value;
-            const finalPrice = calculateDiscount(price, type);
-            document.getElementById('result').textContent = finalPrice;
+test.describe('Checkout Logic and UI Branch Coverage', () => {
+    test.beforeEach(async ({ page }) => {
+        await page.goto('file://' + path.join(__dirname, 'sandbox.html'));
+    });
+
+    test('should calculate total correctly for valid inputs', async ({ page }) => {
+        await page.fill('#price', '10000');
+        await page.fill('#qty', '3');
+        await page.click('#check-btn');
+
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Total: Rp 30.000');
+        await expect(display).toHaveCSS('color', 'rgb(0, 128, 0)'); // green
+    });
+
+    test('should show error for non-numeric/empty inputs', async ({ page }) => {
+        await page.fill('#price', '');
+        await page.fill('#qty', '');
+        await page.click('#check-btn');
+
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+        await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)'); // red
+    });
+
+    test('should show error for price less than or equal to zero', async ({ page }) => {
+        await page.fill('#price', '0');
+        await page.fill('#qty', '5');
+        await page.click('#check-btn');
+
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+
+        await page.fill('#price', '-50');
+        await page.click('#check-btn');
+        await expect(display).toHaveText('Input Tidak Valid');
+    });
+
+    test('should show error for quantity less than or equal to zero', async ({ page }) => {
+        await page.fill('#price', '100');
+        await page.fill('#qty', '0');
+        await page.click('#check-btn');
+
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+
+        await page.fill('#qty', '-1');
+        await page.click('#check-btn');
+        await expect(display).toHaveText('Input Tidak Valid');
+    });
+
+    test('should show error if price is NaN but qty is valid', async ({ page }) => {
+        // Technically input type="number" limits this, but we test the logic branch
+        await page.evaluate(() => {
+            document.getElementById('price').value = 'abc';
         });
-    </script>
-</body>
-</html>
-`;
+        await page.fill('#qty', '5');
+        await page.click('#check-btn');
 
-test.describe('Discount Calculator Branch Coverage', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.setContent(htmlContent);
-  });
-
-  test('should return original price when price is 100 or less (Branch: price > 100 is false)', async ({ page }) => {
-    await page.fill('#price', '100');
-    await page.selectOption('#type', 'REGULAR');
-    await page.click('#calculate-btn');
-    await expect(page.locator('#result')).hasText('100');
-  });
-
-  test('should apply 20% discount for VIP when price is over 100 (Branch: price > 100 is true, type === "VIP" is true)', async ({ page }) => {
-    await page.fill('#price', '200');
-    await page.selectOption('#type', 'VIP');
-    await page.click('#calculate-btn');
-    await expect(page.locator('#result')).hasText('160');
-  });
-
-  test('should apply 10% discount for REGULAR when price is over 100 (Branch: price > 100 is true, type === "VIP" is false)', async ({ page }) => {
-    await page.fill('#price', '200');
-    await page.selectOption('#type', 'REGULAR');
-    await page.click('#calculate-btn');
-    await expect(page.locator('#result')).hasText('180');
-  });
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+    });
 });
