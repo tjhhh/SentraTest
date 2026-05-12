@@ -180,25 +180,42 @@ function parsePlaywrightJson(data) {
   const results = [];
   let totalDuration = 0;
 
-  if (data.suites) {
-    data.suites.forEach(suite => {
-      suite.specs.forEach(spec => {
-        spec.tests.forEach(test => {
-          const result = test.results[0];
-          results.push({
-            title: spec.title,
-            status: result.status,
-            duration: result.duration,
-            error: result.error ? {
-              message: result.error.message,
-              stack: result.error.stack
-            } : null
+  function traverseSuites(suites) {
+    if (!suites) return;
+
+    suites.forEach(suite => {
+
+      // Parse specs di suite sekarang
+      if (suite.specs) {
+        suite.specs.forEach(spec => {
+          spec.tests.forEach(test => {
+            const result = test.results[0];
+
+            results.push({
+              title: spec.title,
+              status: result.status,
+              duration: result.duration,
+              error: result.errors?.length
+                ? {
+                    message: result.errors[0].message,
+                    stack: result.errors[0].stack
+                  }
+                : null
+            });
+
+            totalDuration += result.duration;
           });
-          totalDuration += result.duration;
         });
-      });
+      }
+
+      // Recursive ke child suites
+      if (suite.suites) {
+        traverseSuites(suite.suites);
+      }
     });
   }
+
+  traverseSuites(data.suites);
 
   const stats = {
     total: results.length,

@@ -1,84 +1,67 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
-const fs = require('fs');
 
-// Ensure screenshots directory exists
-const screenshotsDir = path.join(__dirname, 'screenshots');
-if (!fs.existsSync(screenshotsDir)) {
-    fs.mkdirSync(screenshotsDir);
-}
+test.describe('Checkout Logic Statement Coverage', () => {
 
-test.describe('Checkout Page Logic Branch Coverage', () => {
+    test.beforeEach(async ({ page }) => {
+        const filePath = 'file://' + path.join(__dirname, 'sandbox.html');
+        await page.goto(filePath);
+    });
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + path.join(__dirname, 'sandbox.html'));
-  });
+    test('Valid input: price 1000 and qty 5', async ({ page }) => {
+        console.log('[STEP: TYPE] entering price 1000');
+        await page.fill('#price', '1000');
 
-  test('Success Case: Calculate total with valid positive integers', async ({ page }) => {
-    console.log('[STEP: TYPE] entering valid price: 5000');
-    await page.fill('#price', '5000');
-    
-    console.log('[STEP: TYPE] entering valid quantity: 3');
-    await page.fill('#qty', '3');
-    
-    console.log('[STEP: CLICK] clicking button#check-btn');
-    await page.click('#check-btn');
+        console.log('[STEP: TYPE] entering qty 5');
+        await page.fill('#qty', '5');
 
-    const display = page.locator('#display');
-    await expect(display).toHaveText('Total: Rp 15.000');
-    await expect(display).toHaveCSS('color', 'rgb(0, 128, 0)');
+        console.log('[STEP: CLICK] clicking button#check-btn');
+        await page.click('#check-btn');
 
-    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-  });
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Total: Rp 5.000');
+        await expect(display).toHaveCSS('color', 'rgb(0, 128, 0)'); // green
 
-  test('Error Case: Invalid price (zero or negative)', async ({ page }) => {
-    console.log('[STEP: TYPE] entering invalid price: 0');
-    await page.fill('#price', '0');
-    
-    console.log('[STEP: TYPE] entering valid quantity: 5');
-    await page.fill('#qty', '5');
-    
-    console.log('[STEP: CLICK] clicking button#check-btn');
-    await page.click('#check-btn');
+        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+    });
 
-    const display = page.locator('#display');
-    await expect(display).toHaveText('Input Tidak Valid');
-    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
+    test('Invalid input: Empty/NaN values', async ({ page }) => {
+        console.log('[STEP: TYPE] leaving price empty');
+        await page.fill('#price', '');
 
-    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-  });
+        console.log('[STEP: TYPE] entering qty 5');
+        await page.fill('#qty', '5');
 
-  test('Error Case: Invalid quantity (zero or negative)', async ({ page }) => {
-    console.log('[STEP: TYPE] entering valid price: 1000');
-    await page.fill('#price', '1000');
-    
-    console.log('[STEP: TYPE] entering invalid quantity: -1');
-    await page.fill('#qty', '-1');
-    
-    console.log('[STEP: CLICK] clicking button#check-btn');
-    await page.click('#check-btn');
+        console.log('[STEP: CLICK] clicking button#check-btn');
+        await page.click('#check-btn');
 
-    const display = page.locator('#display');
-    await expect(display).toHaveText('Input Tidak Valid');
-    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+        await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)'); // red
 
-    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-  });
+        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+    });
 
-  test('Error Case: Non-numeric or empty inputs', async ({ page }) => {
-    console.log('[STEP: TYPE] leaving price empty');
-    await page.fill('#price', '');
-    
-    console.log('[STEP: TYPE] entering valid quantity: 10');
-    await page.fill('#qty', '10');
-    
-    console.log('[STEP: CLICK] clicking button#check-btn');
-    await page.click('#check-btn');
+    test('Invalid input: Zero or negative values', async ({ page }) => {
+        console.log('[STEP: TYPE] entering price 100');
+        await page.fill('#price', '100');
 
-    const display = page.locator('#display');
-    await expect(display).toHaveText('Input Tidak Valid');
-    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
+        console.log('[STEP: TYPE] entering negative qty -2');
+        await page.fill('#qty', '-2');
 
-    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-  });
+        console.log('[STEP: CLICK] clicking button#check-btn');
+        await page.click('#check-btn');
+
+        const display = page.locator('#display');
+        await expect(display).toHaveText('Input Tidak Valid');
+        
+        // Test price as zero as well
+        console.log('[STEP: TYPE] entering zero price');
+        await page.fill('#price', '0');
+        await page.fill('#qty', '10');
+        await page.click('#check-btn');
+        await expect(display).toHaveText('Input Tidak Valid');
+
+        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+    });
 });
