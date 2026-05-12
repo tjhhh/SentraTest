@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  RotateCcw, 
-  ThumbsUp, 
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  RotateCcw,
+  ThumbsUp,
   ThumbsDown,
   Paperclip,
   Zap
@@ -15,21 +15,30 @@ import {
 import { cn } from '@/lib/utils';
 
 interface Message {
+  id?: string;
   role: 'assistant' | 'user';
   content: string;
   time: string;
+  feedback?: 'up' | 'down';
 }
+
+const DEMO_USER_ID = "eaa9b63d-25bd-4e8f-adfd-73718053574c";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+const BUG_TEMPLATE = "Tolong jelaskan error berikut:\n";
+const STRATEGY_TEMPLATE = "Tolong berikan strategi pengujian untuk fitur:\n";
 
 export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { 
-      role: 'assistant', 
-      content: "Hello! I'm your SentraTest AI Assistant. I can help you with test strategies, explain bugs, or answer questions about your test cases. How can I help you today?", 
-      time: '10:00 AM' 
+    {
+      role: 'assistant',
+      content: "Hello! I'm your SentraTest AI Assistant. I can help you with test strategies, explain bugs, or answer questions about your test cases. How can I help you today?",
+      time: '10:00 AM'
     }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,8 +47,32 @@ export default function AssistantPage() {
     }
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/chats`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: DEMO_USER_ID, title: 'New Conversation' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setChatId(data.id);
+          if (data.welcomeMessage) {
+            setMessages([{ role: 'assistant', content: data.welcomeMessage, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to init chat:', err);
+      }
+    };
+    if (!chatId) {
+      initChat();
+    }
+  }, [chatId]);
+
+  const handleSend = async () => {
+    if (!input.trim() || !chatId) return;
 
     const userMsg: Message = {
       role: 'user',
@@ -48,19 +81,66 @@ export default function AssistantPage() {
     };
 
     setMessages(prev => [...prev, userMsg]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
+    setError(null);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const assistantMsg: Message = {
+    try {
+      let res;
+      if (currentInput.startsWith(BUG_TEMPLATE.trim())) {
+        const errorLog = currentInput.replace(BUG_TEMPLATE.trim(), '').trim();
+        res = await fetch(`${API_BASE}/chats/${chatId}/explain-bug`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: DEMO_USER_ID, errorLog })
+        });
+      } else {
+        res = await fetch(`${API_BASE}/chats/${chatId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: DEMO_USER_ID, content: currentInput })
+        });
+      }
+
+      if (!res.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await res.json();
+
+      let replyContent = '';
+      if (data.explanation) {
+        if (typeof data.explanation === 'string') {
+          replyContent = data.explanation;
+        } else if (typeof data.explanation === 'object') {
+          const exp = data.explanation;
+          replyContent = `Summary:\n${exp.summary || 'N/A'}\n\nError Explanation:\n${exp.errorExplanation || 'N/A'}\n\nPossible Causes:\n${exp.possibleCauses?.join('\n') || 'N/A'}\n\nDebugging Steps:\n${exp.debuggingSteps?.join('\n') || 'N/A'}`;
+        } else {
+          replyContent = JSON.stringify(data.explanation, null, 2);
+        }
+      } else {
+        replyContent = data.assistantReply || 'No reply received';
+      }
+
+      if (replyContent) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: replyContent,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to send message.');
+      setMessages(prev => [...prev, {
         role: 'assistant',
-        content: "That's a great question. Based on the logic you've shared, I recommend using Boundary Value Analysis for the 'price' field, as it has specific thresholds at 100. This will ensure we cover the most critical edge cases efficiently.",
+        content: "I'm sorry, I encountered an error while communicating with the server. Please try again.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, assistantMsg]);
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -78,7 +158,7 @@ export default function AssistantPage() {
             </div>
           </div>
         </div>
-        <button 
+        <button
           onClick={() => setMessages([messages[0]])}
           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
           title="Reset Conversation"
@@ -87,13 +167,13 @@ export default function AssistantPage() {
         </button>
       </div>
 
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 bg-white border-x border-slate-200 overflow-y-auto p-6 space-y-6 custom-scrollbar"
       >
         {messages.map((msg, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className={cn(
               "flex gap-4 animate-in slide-in-from-bottom-2 duration-300",
               msg.role === 'user' ? "flex-row-reverse" : ""
@@ -111,8 +191,8 @@ export default function AssistantPage() {
             )}>
               <div className={cn(
                 "p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-                msg.role === 'assistant' 
-                  ? "bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100" 
+                msg.role === 'assistant'
+                  ? "bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100"
                   : "bg-indigo-600 text-white rounded-tr-none"
               )}>
                 {msg.content}
@@ -169,12 +249,18 @@ export default function AssistantPage() {
           </div>
         </div>
         <div className="mt-4 flex items-center justify-center gap-6">
-          <button className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group">
+          <button
+            onClick={() => setInput(BUG_TEMPLATE)}
+            className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
+          >
             <Zap className="w-3 h-3 group-hover:animate-pulse" />
             Analyze Error
           </button>
           <div className="w-1 h-1 bg-slate-300 rounded-full" />
-          <button className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group">
+          <button
+            onClick={() => setInput(STRATEGY_TEMPLATE)}
+            className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
+          >
             <Sparkles className="w-3 h-3 group-hover:animate-pulse" />
             Suggest Strategy
           </button>

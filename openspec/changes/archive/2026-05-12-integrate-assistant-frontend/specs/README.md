@@ -1,0 +1,1 @@
+No new capabilities or requirement modifications were introduced in this change. The goal is solely to implement the frontend component based on the existing requirements defined in `openspec/specs/assistant/spec.md`.
