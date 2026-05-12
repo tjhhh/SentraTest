@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sentra-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sentra_test
+    ports:
+      - "5432:5432"
+    volumes:
+      - sentra-postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    container_name: sentra-backend
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sentra_test?schema=public
+      JWT_ACCESS_SECRET: replace-with-access-secret-32chars
+      JWT_REFRESH_SECRET: replace-with-refresh-secret-32chars
+      CORS_ORIGINS: http://localhost:3000
+      GEMINI_MODEL: gemini-1.5-flash
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX: 100
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+
+volumes:
+  sentra-postgres-data:

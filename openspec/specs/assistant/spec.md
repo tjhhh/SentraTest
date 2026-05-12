@@ -3,18 +3,20 @@
 ## Requirements
 
 ### Requirement: Contextual Q&A
-Sistem HARUS menyediakan antarmuka chat yang memiliki konteks terhadap test case yang sedang dibuka.
+Sistem HARUS menyediakan antarmuka chat berbasis backend API yang memiliki konteks terhadap test case dan histori conversation aktif, serta mendukung mode streaming response.
 
 #### Scenario: Asking about Test Case
-- GIVEN pengguna sedang melihat sebuah test case BVA
-- WHEN pengguna bertanya "Mengapa nilai ini diuji?" via chatbox
-- THEN Gemini API menjawab berdasarkan konteks test case tersebut
+- **WHEN** pengguna sedang berada pada conversation yang terkait test case dan mengajukan pertanyaan lanjutan
+- **THEN** sistem SHALL menggabungkan konteks test case dan histori pesan untuk menghasilkan jawaban yang relevan
+
+#### Scenario: Streaming assistant answer
+- **WHEN** pengguna meminta respons assistant dengan mode streaming
+- **THEN** sistem SHALL mengirim jawaban secara bertahap melalui SSE hingga respons selesai
 
 ### Requirement: Bug Explainer
-Sistem HARUS bisa menjelaskan pesan error dari terminal/log.
+Sistem HARUS bisa menjelaskan pesan error dari terminal/log melalui endpoint backend yang terintegrasi dengan AI service dan memberikan rekomendasi perbaikan.
 
 #### Scenario: Error Analysis
-- GIVEN pengguna menempelkan pesan error (stack trace) ke chatbox
-- WHEN pengguna meminta penjelasan
-- THEN sistem menganalisis error tersebut
-- AND memberikan kemungkinan penyebab dan saran perbaikan
+- **WHEN** pengguna mengirim stack trace ke endpoint bug explain
+- **THEN** sistem SHALL menganalisis error tersebut
+- **THEN** sistem SHALL mengembalikan kemungkinan penyebab dan saran perbaikan yang dapat ditindaklanjuti

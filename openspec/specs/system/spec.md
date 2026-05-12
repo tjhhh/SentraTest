@@ -1,30 +1,24 @@
-# Domain: Contextual Assistant (Chatbox)
+# Domain: System Foundation
 
-## 1. Overview
-Asisten virtual yang berfungsi sebagai konsultan QA untuk membantu pengguna menentukan strategi pengujian dan menganalisis kesalahan pada kode atau test case.
+## Requirements
 
-## 2. Requirements
+### Requirement: Environment-based Configuration
+Sistem MUST membaca konfigurasi runtime dari environment variables tervalidasi untuk semua komponen backend kritikal.
 
-### Requirement: Test Strategy Advisor
-Sistem HARUS mampu memberikan saran metode pengujian (BVA, EQP, atau DT) yang paling efektif berdasarkan deskripsi fitur yang ditanyakan pengguna.
+#### Scenario: Missing mandatory environment variable
+- **WHEN** aplikasi dijalankan tanpa environment variable wajib
+- **THEN** sistem SHALL gagal start dengan pesan error konfigurasi yang jelas
 
-#### Scenario: Method Recommendation
-- *GIVEN* pengguna bertanya tentang metode terbaik untuk fitur tertentu (misal: Login).
-- *WHEN* sistem mendeteksi input berupa kombinasi logika atau batasan nilai.
-- *THEN* Gemini API memberikan saran metode (misal: Decision Table untuk Login) beserta alasannya.
+### Requirement: Containerized Deployment Support
+Sistem MUST mendukung deployment container dengan image backend yang dapat dijalankan konsisten lintas environment.
 
-### Requirement: Bug Explainer
-Sistem HARUS bisa menjelaskan pesan error atau log yang diberikan oleh pengguna.
+#### Scenario: Run backend container
+- **WHEN** image backend dijalankan pada runtime container
+- **THEN** sistem SHALL menjalankan service API pada port dan konfigurasi yang ditentukan
 
-#### Scenario: Error Analysis
-- *GIVEN* pengguna memberikan potongan pesan error (stack trace).
-- *WHEN* pengguna meminta penjelasan penyebab error.
-- *THEN* sistem menganalisis kemungkinan penyebab di sisi Backend (Express) atau Frontend (Next.js) dan memberikan saran perbaikan.
+### Requirement: Kubernetes Baseline Manifests
+Sistem MUST menyediakan manifest Kubernetes baseline untuk deployment backend service dan konfigurasi secret/env.
 
-### Requirement: Contextual Q&A
-Sistem HARUS memiliki ingatan terhadap test case yang baru saja digenerate untuk menjawab pertanyaan lanjutan.
-
-#### Scenario: Follow-up Question
-- *GIVEN* pengguna baru saja melakukan generate Blackbox BVA.
-- *WHEN* pengguna bertanya "Kenapa angka 0 masuk ke dalam tes ini?".
-- *THEN* sistem menjawab berdasarkan aturan metode BVA yang diterapkan pada requirement tersebut.
+#### Scenario: Apply manifests
+- **WHEN** manifest Kubernetes baseline diterapkan pada cluster yang valid
+- **THEN** sistem SHALL membuat resource minimum yang dibutuhkan untuk menjalankan backend secara operasional
