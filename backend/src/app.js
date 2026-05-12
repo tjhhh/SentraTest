@@ -10,6 +10,8 @@ const { httpLogger } = require("./config/logger");
 const { requestContext } = require("./middlewares/requestContext");
 const { notFoundHandler } = require("./middlewares/notFound");
 const { errorHandler } = require("./middlewares/errorHandler");
+const swaggerUi = require("swagger-ui-express");
+const { swaggerSpec } = require("./config/swagger");
 const { apiRouter } = require("./routes/index");
 
 const app = express();
@@ -17,6 +19,9 @@ const app = express();
 app.use(requestContext);
 app.use(helmet());
 app.use(httpLogger);
+
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.use(
   cors({
     origin: env.corsOrigins,

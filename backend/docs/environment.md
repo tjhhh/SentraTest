@@ -3,6 +3,7 @@
 ## Development
 - Use `.env` from `.env.example`
 - Usually points to local Postgres and optional Gemini key
+- For Docker Compose, use service hostname `postgres` inside `DATABASE_URL`
 
 ## Test
 - Use `.env.test` and isolated test database
@@ -22,3 +23,8 @@
 - `GEMINI_MODEL`
 - `RATE_LIMIT_WINDOW_MS`
 - `RATE_LIMIT_MAX`
+
+## Docker Compose Example
+- Backend host machine access: `http://localhost:4000`
+- Database host machine access: `postgresql://postgres:postgres@localhost:5432/sentra_test?schema=public`
+- Backend container database access: `postgresql://postgres:postgres@postgres:5432/sentra_test?schema=public`

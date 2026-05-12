@@ -9,7 +9,51 @@ const { analyzeSchema, scriptSchema } = require("./whitebox.schema");
 const router = express.Router();
 
 router.use(authMiddleware);
+
+/**
+ * @openapi
+ * /api/wb/analyze:
+ *   post:
+ *     tags: [Whitebox]
+ *     summary: Analisis source code untuk coverage whitebox
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [conversationId, coverageType, sourceCode]
+ *             properties:
+ *               conversationId: { type: string }
+ *               coverageType: { type: string, enum: [STATEMENT, BRANCH, PATH] }
+ *               sourceCode: { type: string }
+ *     responses:
+ *       200:
+ *         description: Analisis berhasil dilakukan
+ */
 router.post("/analyze", generationLimiter, validate(analyzeSchema), analyze);
+
+/**
+ * @openapi
+ * /api/wb/script:
+ *   post:
+ *     tags: [Whitebox]
+ *     summary: Generate Playwright script dari analisis whitebox
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [analysis]
+ *             properties:
+ *               analysis: { type: object }
+ *     responses:
+ *       200:
+ *         description: Script berhasil digenerate
+ */
 router.post("/script", generationLimiter, validate(scriptSchema), script);
 
 module.exports = { whiteboxRoutes: router };
