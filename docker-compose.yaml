@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: express_backend
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: "103.185.52.138"
+      DB_PORT: 1185
+      DB_USER: "blind_spot"
+      DB_PASSWORD: "1b9r0t8>upLY9zAXA*G0(vZ1{NzDt5J1"
+      DB_NAME: "blind_spot"
+
+  frontend:
+    build: ./frontend
+    container_name: nextjs_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:5000
+
