@@ -2,88 +2,42 @@
 
 ## Requirements
 
-### Requirement: User Registration
-Sistem HARUS menyediakan mekanisme pendaftaran akun bagi pengguna baru dengan validasi yang aman.
+### Requirement: User Authentication
+Sistem HARUS menyediakan mekanisme bagi pengguna untuk mendaftar dan masuk ke dalam aplikasi menggunakan kredensial tervalidasi, password hashing bcrypt, dan JWT access token.
 
-#### Scenario: Successful User Registration
-- GIVEN pengguna baru yang belum memiliki akun
-- WHEN pengguna mengisi form registrasi dengan email valid, username unik, dan password yang memenuhi kriteria kompleksitas
-- THEN sistem memvalidasi input dan menyimpan data pengguna ke database PostgreSQL dengan password yang ter-hash menggunakan bcrypt
-- AND sistem mengembalikan JWT token (access token 15 menit, refresh token 7 hari)
-- AND pengguna diarahkan ke dashboard utama
+#### Scenario: User Registration
+- **WHEN** pengguna baru mengirim email dan password valid untuk registrasi
+- **THEN** sistem SHALL melakukan hash password sebelum penyimpanan ke database PostgreSQL
+- **THEN** sistem SHALL membuat akun pengguna dan mengembalikan access token serta refresh token
 
-#### Scenario: Registration with Invalid Email
-- GIVEN pengguna mencoba mendaftar dengan format email tidak valid
-- WHEN sistem melakukan validasi email
-- THEN sistem menolak registrasi dan menampilkan pesan error "Email tidak valid"
+#### Scenario: User Login
+- **WHEN** pengguna terdaftar memasukkan email dan kredensial valid
+- **THEN** sistem SHALL memvalidasi kredensial terhadap hash password tersimpan
+- **THEN** sistem SHALL mengembalikan access token dan refresh token yang aktif
 
-#### Scenario: Registration with Duplicate Email
-- GIVEN pengguna mencoba mendaftar dengan email yang sudah terdaftar
-- WHEN sistem memeriksa keberadaan email di database
-- THEN sistem menolak registrasi dan menampilkan pesan error "Email sudah terdaftar"
+### Requirement: Refresh Token Lifecycle
+Sistem MUST menyediakan endpoint dan mekanisme untuk refresh token rotation dan invalidasi sesi.
 
-#### Scenario: Registration with Weak Password
-- GIVEN pengguna mencoba mendaftar dengan password yang tidak memenuhi kriteria kompleksitas
-- WHEN sistem memvalidasi strength password
-- THEN sistem menolak registrasi dan menampilkan pesan error "Password terlalu lemah"
+#### Scenario: Refresh access token
+- **WHEN** pengguna mengirim refresh token yang valid
+- **THEN** sistem SHALL menerbitkan access token baru dan refresh token baru
 
-### Requirement: User Login
-Sistem HARUS menyediakan mekanisme login yang aman dengan JWT authentication.
+#### Scenario: Revoke refresh token
+- **WHEN** pengguna logout atau token dicurigai disalahgunakan
+- **THEN** sistem SHALL menonaktifkan refresh token sehingga tidak dapat digunakan kembali
+
+### Requirement: JWT-based Authentication Flow
+Sistem MUST menghubungkan form login dan registrasi dengan endpoint backend `/api/auth` dan mengelola token JWT.
 
 #### Scenario: Successful Login
-- GIVEN pengguna yang sudah terdaftar dengan email dan password valid
-- WHEN pengguna memasukkan kredensial yang benar
-- THEN sistem memvalidasi kredensial dengan bcrypt
-- AND sistem menghasilkan JWT token (access token dan refresh token)
-- AND sistem menyimpan sesi login di database
-- AND pengguna diarahkan ke dashboard utama
+- **WHEN** pengguna memasukkan kredensial yang valid dan menekan tombol login
+- **THEN** sistem SHALL memanggil endpoint `/api/auth/login`
+- **THEN** sistem SHALL menyimpan access token dan refresh token secara aman
+- **THEN** sistem SHALL mengarahkan pengguna ke dashboard utama
 
-#### Scenario: Login with Invalid Credentials
-- GIVEN pengguna mencoba login dengan email atau password yang salah
-- WHEN sistem memvalidasi kredensial
-- THEN sistem menolak login dan menampilkan pesan error "Email atau password salah"
-- AND sistem mencatat attempt untuk proteksi brute force
+### Requirement: Protected Route Management
+Sistem MUST membatasi akses ke halaman internal platform hanya untuk pengguna yang telah terautentikasi.
 
-#### Scenario: Login with Remember Me
-- GIVEN pengguna memilih opsi "Remember Me" saat login
-- WHEN login berhasil
-- THEN refresh token disimpan dengan durasi lebih lama (7 hari)
-- AND pengguna tetap login meskipun menutup browser
-
-### Requirement: JWT Token Management
-Sistem HARUS mengelola JWT token dengan mekanisme refresh token yang aman.
-
-#### Scenario: Access Token Expiration
-- GIVEN pengguna dengan access token yang expired (15 menit)
-- WHEN pengguna mengakses protected endpoint
-- THEN sistem mengembalikan error 401 Unauthorized
-- AND sistem menyediakan mekanisme untuk refresh token
-
-#### Scenario: Token Refresh
-- GIVEN pengguna dengan refresh token yang masih valid
-- WHEN access token expired dan pengguna meminta token baru
-- THEN sistem memvalidasi refresh token
-- AND sistem menghasilkan access token baru
-- AND sistem mengembalikan token baru ke client
-
-#### Scenario: Logout
-- GIVEN pengguna yang sedang login
-- WHEN pengguna melakukan logout
-- THEN sistem menghapus token dari storage
-- AND sistem menginvalidate refresh token di database
-- AND pengguna diarahkan ke halaman login
-
-### Requirement: Session Management
-Sistem HARUS mengelola sesi pengguna dengan keamanan yang memadai.
-
-#### Scenario: Multiple Device Login
-- GIVEN pengguna login dari perangkat berbeda
-- WHEN pengguna login di perangkat baru
-- THEN sistem membuat sesi baru untuk perangkat tersebut
-- AND sistem mencatat semua sesi aktif di database
-
-#### Scenario: Logout from All Devices
-- GIVEN pengguna dengan multiple sesi aktif
-- WHEN pengguna memilih "Logout from all devices"
-- THEN sistem menginvalidate semua refresh token pengguna
-- AND semua sesi aktif terminated
+#### Scenario: Unauthenticated Access
+- **WHEN** pengguna yang tidak terautentikasi mencoba mengakses URL `/dashboard` atau `/chat`
+- **THEN** sistem SHALL mengarahkan pengguna kembali ke halaman login secara otomatis

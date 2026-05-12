@@ -1,34 +1,32 @@
-# Domain: System Error Handling & Observability
+# Domain: System Foundation
 
 ## Requirements
 
-### Requirement: Global Error Handler
-Sistem HARUS memiliki middleware penanganan error terpusat yang mencegah "silent errors" dan mempermudah proses debugging bagi developer.
+### Requirement: Environment-based Configuration
+Sistem MUST membaca konfigurasi runtime dari environment variables tervalidasi untuk semua komponen backend kritikal.
 
-#### Scenario: Handle Internal Server Errors (500)
-- GIVEN terjadi error yang tidak terduga pada server (misal: database connection error)
-- WHEN error dilempar ke global error handler
-- THEN sistem HARUS mencetak detail error secara lengkap ke console (termasuk stack trace)
-- AND sistem mengembalikan HTTP status 500
-- AND jika environment adalah 'development', response body berisi detail error dan stack trace
-- AND jika environment adalah 'production', response body hanya berisi pesan generic "Internal Server Error" demi keamanan
+#### Scenario: Missing mandatory environment variable
+- **WHEN** aplikasi dijalankan tanpa environment variable wajib
+- **THEN** sistem SHALL gagal start dengan pesan error konfigurasi yang jelas
 
-#### Scenario: Handle Validation Errors (400)
-- GIVEN pengguna mengirim data yang tidak sesuai format (gagal di express-validator)
-- WHEN request ditolak
-- THEN sistem mengembalikan HTTP status 400
-- AND response body HARUS berisi daftar detail validasi yang gagal dalam format array
+### Requirement: Containerized Deployment Support
+Sistem MUST mendukung deployment container dengan image backend yang dapat dijalankan konsisten lintas environment.
 
-#### Scenario: Handle Not Found Routes (404)
-- GIVEN pengguna mengakses endpoint API yang tidak terdaftar
-- WHEN route tidak ditemukan
-- THEN sistem mengembalikan HTTP status 404
-- AND response body berisi pesan "API endpoint not found"
+#### Scenario: Run backend container
+- **WHEN** image backend dijalankan pada runtime container
+- **THEN** sistem SHALL menjalankan service API pada port dan konfigurasi yang ditentukan
 
-### Requirement: Request Logging
-Sistem HARUS mencatat (log) setiap request yang masuk untuk mempermudah pelacakan (traceability).
+### Requirement: Kubernetes Baseline Manifests
+Sistem MUST menyediakan manifest Kubernetes baseline untuk deployment backend service dan konfigurasi secret/env.
 
-#### Scenario: Log Incoming Requests
-- GIVEN ada request HTTP masuk ke server
-- WHEN request diproses
-- THEN sistem mencetak log singkat ke console berisi: Method, URL, dan Status Code (bisa menggunakan library seperti 'morgan')
+#### Scenario: Apply manifests
+- **WHEN** manifest Kubernetes baseline diterapkan pada cluster yang valid
+- **THEN** sistem SHALL membuat resource minimum yang dibutuhkan untuk menjalankan backend secara operasional
+
+### Requirement: Multi-format Result Export
+Sistem MUST menyediakan opsi bagi pengguna untuk mengunduh hasil pengujian dalam format PDF, JSON, atau ZIP.
+
+#### Scenario: Download Export File
+- **WHEN** pengguna memilih format "JSON" dan menekan tombol download
+- **THEN** sistem SHALL memanggil endpoint export yang sesuai
+- **THEN** sistem SHALL memicu pengunduhan file ke komputer pengguna

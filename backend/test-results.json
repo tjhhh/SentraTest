@@ -1,0 +1,218 @@
+{
+  "config": {
+    "rootDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/SentraTest/backend",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/SentraTest/backend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/SentraTest/backend",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ],
+      [
+        "list"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.60.0",
+    "workers": 6,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "temp-test.spec.js",
+      "file": "temp-test.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Checkout Logic Statement Coverage",
+          "file": "temp-test.spec.js",
+          "line": 4,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Valid input: price 1000 and qty 5",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 951,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] entering price 1000\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] entering qty 5\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking button#check-btn\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T15:52:52.128Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "62d40858aefff8cfa939-9e4698aa7803fbe93b85",
+              "file": "temp-test.spec.js",
+              "line": 11,
+              "column": 5
+            },
+            {
+              "title": "Invalid input: Empty/NaN values",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 478,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] leaving price empty\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] entering qty 5\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking button#check-btn\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T15:52:53.758Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "62d40858aefff8cfa939-72720f899c4bab51a8cd",
+              "file": "temp-test.spec.js",
+              "line": 28,
+              "column": 5
+            },
+            {
+              "title": "Invalid input: Zero or negative values",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 506,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[STEP: TYPE] entering price 100\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] entering negative qty -2\n"
+                        },
+                        {
+                          "text": "[STEP: CLICK] clicking button#check-btn\n"
+                        },
+                        {
+                          "text": "[STEP: TYPE] entering zero price\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-05-12T15:52:54.246Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "62d40858aefff8cfa939-5d634df7c350520f53e9",
+              "file": "temp-test.spec.js",
+              "line": 45,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-05-12T15:52:51.581Z",
+    "duration": 3261.651,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
