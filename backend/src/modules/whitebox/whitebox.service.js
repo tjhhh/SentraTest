@@ -2,11 +2,11 @@ const { buildPrompt } = require("../../services/ai/promptOrchestrator.service");
 const { generateText } = require("../../services/ai/gemini.service");
 const { parseJsonSafe, normalizeGenerationOutput } = require("../../services/ai/outputParser.service");
 const { createTestCase } = require("./whitebox.repository");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { appLogger } = require("../../config/logger");
+const { env } = require("../../config/env");
 
 async function analyze({ userId, conversationId, coverageType, sourceCode, requestId }) {
   const prompt = buildPrompt({
@@ -40,12 +40,10 @@ function script({ analysis }) {
   return { script: scriptContent };
 }
 
-async function generateTestScript({ logicCode, uiCode, coverageType }) {
+async function generateTestScript({ logicCode, uiCode, coverageType, requestId = "wb-gen" }) {
   if (!logicCode) {
     throw new Error("Logic code is required");
   }
-
-  const apiKey = process.env.GEMINI_API_KEY;
 
   const prompt = `
     Analyze the following JavaScript logic and UI code. 
@@ -82,33 +80,35 @@ async function generateTestScript({ logicCode, uiCode, coverageType }) {
   let generatedScript = "";
   let testTitles = [];
 
-  if (!apiKey) {
-    appLogger.warn("GEMINI_API_KEY is not set. Using fallback whitebox script generation.");
-    ({ script: generatedScript, testTitles } = buildFallbackGeneration(logicCode, coverageType));
-  } else {
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      let textResult = response.text();
+  try {
+    const ai = await generateText(prompt, requestId);
 
-      // Clean up markdown formatting if Gemini included it
-      textResult = textResult.replace(/```json/g, "").replace(/```/g, "").trim();
+    if (ai.provider === "fallback") {
+      appLogger.warn("Gemini unavailable, using fallback whitebox script generation.", { requestId });
+      ({ script: generatedScript, testTitles } = buildFallbackGeneration(logicCode, coverageType));
+    } else {
+      let textResult = ai.text;
+
+      // More robust JSON extraction
+      const jsonMatch = textResult.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        textResult = jsonMatch[0];
+      }
 
       const parsed = JSON.parse(textResult);
       if (typeof parsed.script !== "string" || !Array.isArray(parsed.testTitles)) {
-        throw new Error("Invalid Gemini response format");
+        throw new Error("Invalid Gemini response format: missing script or testTitles");
       }
 
       generatedScript = parsed.script;
       testTitles = parsed.testTitles;
-    } catch (error) {
-      appLogger.error("Gemini generation failed, using fallback script", {
-        message: error instanceof Error ? error.message : String(error),
-      });
-      ({ script: generatedScript, testTitles } = buildFallbackGeneration(logicCode, coverageType));
     }
+  } catch (error) {
+    appLogger.error("Whitebox generation failed, using fallback script", {
+      message: error instanceof Error ? error.message : String(error),
+      requestId,
+    });
+    ({ script: generatedScript, testTitles } = buildFallbackGeneration(logicCode, coverageType));
   }
 
   // Generate sandbox HTML

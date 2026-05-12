@@ -69,8 +69,13 @@ app.post('/api/whitebox/generate', async (req, res) => {
     const response = await result.response;
     let textResult = response.text();
 
-    // Clean up markdown formatting if Gemini included it
-    textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Clean up markdown formatting and extract JSON
+    const jsonMatch = textResult.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      textResult = jsonMatch[0];
+    } else {
+      textResult = textResult.replace(/```json/g, "").replace(/```/g, "").trim();
+    }
 
     const { script: generatedScript, testTitles } = JSON.parse(textResult);
 
