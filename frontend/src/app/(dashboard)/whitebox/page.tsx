@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TestTimeline } from '@/components/TestTimeline';
 import { EvidenceGallery } from '@/components/EvidenceGallery';
+import TestResults, { TestStats, TestResult } from '@/components/TestResults';
 
 const coverageTypes = [
   { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
@@ -45,6 +46,7 @@ export default function WhiteboxPage() {
   const [output, setOutput] = useState<string[]>([]);
   const [steps, setSteps] = useState<TestStep[]>([]);
   const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [testResults, setTestResults] = useState<{ stats: TestStats; tests: TestResult[] } | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
   const sandboxSrcDoc = useMemo(() => {
@@ -70,6 +72,7 @@ export default function WhiteboxPage() {
     setIsProcessing(true);
     setSteps([]);
     setScreenshots([]);
+    setTestResults(null);
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
@@ -85,7 +88,15 @@ export default function WhiteboxPage() {
       }
 
       const data = await response.json();
-      setOutput(prev => [...prev, '> Analysis complete. UI-aware Playwright script generated.']);
+      
+      if (data.testTitles) {
+        setTestResults({
+          stats: { total: data.testTitles.length, passed: 0, failed: 0, skipped: 0, duration: 0 },
+          tests: data.testTitles.map((title: string) => ({ title, status: 'pending', duration: 0 }))
+        });
+      }
+
+      setOutput(prev => [...prev, `> Analysis complete. ${data.testTitles?.length || 0} test cases generated.`]);
     } catch (error: any) {
       console.error(error);
       setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
@@ -98,6 +109,7 @@ export default function WhiteboxPage() {
     setIsRunning(true);
     setSteps([]);
     setScreenshots([]);
+    setTestResults(null);
     setOutput(['> Starting Playwright Runner...']);
     
     try {
@@ -153,6 +165,17 @@ export default function WhiteboxPage() {
                setOutput(prev => [...prev, '[SYSTEM] No screenshots captured due to test failure.']);
             }
             setScreenshots(files);
+          }
+
+          // Parse JSON Results
+          const resultMatch = line.match(/\[RESULT: JSON\] (.*)/);
+          if (resultMatch) {
+            try {
+              const data = JSON.parse(resultMatch[1]);
+              setTestResults(data);
+            } catch (err) {
+              console.error('Failed to parse result JSON', err);
+            }
           }
         });
       }
@@ -262,6 +285,12 @@ export default function WhiteboxPage() {
               />
             </div>
           </div>
+
+          {testResults && (
+            <div className="h-[400px]">
+              <TestResults results={testResults} />
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="h-[500px]">

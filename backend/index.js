@@ -46,8 +46,17 @@ app.post('/api/whitebox/generate', async (req, res) => {
       3. The screenshot filename MUST start with 'result-' and end with '.png'.
       4. Make sure to import 'path' in the test script.
 
-      Include necessary imports and test cases that verify interactions and assertions.
-      Return ONLY the code for the test script, without any markdown formatting or explanations.
+      Return the result as a JSON object with two keys:
+      - "script": The full Playwright test script code (string).
+      - "testTitles": An array of strings representing the titles/descriptions of each test case generated.
+
+      Example output format:
+      {
+        "script": "const { test, expect } = require('@playwright/test'); ...",
+        "testTitles": ["Test Case 1: Initial State", "Test Case 2: Discount Calculation"]
+      }
+
+      Return ONLY the raw JSON object, without any markdown formatting or explanations.
 
       Logic Code:
       ${logicCode}
@@ -58,10 +67,12 @@ app.post('/api/whitebox/generate', async (req, res) => {
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let generatedScript = response.text();
+    let textResult = response.text();
 
     // Clean up markdown formatting if Gemini included it
-    generatedScript = generatedScript.replace(/```javascript/g, '').replace(/```/g, '').trim();
+    textResult = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const { script: generatedScript, testTitles } = JSON.parse(textResult);
 
     // Generate sandbox HTML
     const sandboxHTML = generateSandboxHTML(logicCode, uiCode);
@@ -71,7 +82,7 @@ app.post('/api/whitebox/generate', async (req, res) => {
     const tempFilePath = path.join(__dirname, 'temp-test.spec.js');
     fs.writeFileSync(tempFilePath, generatedScript);
 
-    res.json({ script: generatedScript });
+    res.json({ script: generatedScript, testTitles });
   } catch (error) {
     console.error('Error generating script:', error);
     res.status(500).json({ error: 'Failed to generate script', details: error.message });
@@ -112,19 +123,28 @@ function generateSandboxHTML(logic, ui) {
 }
 
 app.post('/api/whitebox/run', (req, res) => {
-  // Clean up old screenshots
+  // Clean up old screenshots and results
   const files = fs.readdirSync(screenshotsDir);
   for (const file of files) {
     if (file.endsWith('.png')) {
       fs.unlinkSync(path.join(screenshotsDir, file));
     }
   }
+  const resultsPath = path.join(__dirname, 'test-results.json');
+  if (fs.existsSync(resultsPath)) {
+    fs.unlinkSync(resultsPath);
+  }
 
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Transfer-Encoding', 'chunked');
 
-  const child = spawn('npx', ['playwright', 'test', 'temp-test.spec.js'], {
-    shell: true
+  // Run with JSON reporter and list reporter for streaming logs
+  const child = spawn('npx', [
+    'playwright', 'test', 'temp-test.spec.js',
+    '--reporter=json,list'
+  ], {
+    shell: true,
+    env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_FILE: resultsPath }
   });
 
   child.stdout.on('data', (data) => {
@@ -139,10 +159,57 @@ app.post('/api/whitebox/run', (req, res) => {
     // List new screenshots
     const newFiles = fs.readdirSync(screenshotsDir).filter(f => f.endsWith('.png'));
     res.write(`\n[EVIDENCE: SCREENSHOTS] ${newFiles.join(',')}\n`);
+
+    // Parse and send results
+    if (fs.existsSync(resultsPath)) {
+      try {
+        const rawResults = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+        const parsedResults = parsePlaywrightJson(rawResults);
+        res.write(`\n[RESULT: JSON] ${JSON.stringify(parsedResults)}\n`);
+      } catch (err) {
+        console.error('Error parsing test results:', err);
+      }
+    }
+
     res.write(`\n> Execution finished with code ${code}\n`);
     res.end();
   });
 });
+
+function parsePlaywrightJson(data) {
+  const results = [];
+  let totalDuration = 0;
+
+  if (data.suites) {
+    data.suites.forEach(suite => {
+      suite.specs.forEach(spec => {
+        spec.tests.forEach(test => {
+          const result = test.results[0];
+          results.push({
+            title: spec.title,
+            status: result.status,
+            duration: result.duration,
+            error: result.error ? {
+              message: result.error.message,
+              stack: result.error.stack
+            } : null
+          });
+          totalDuration += result.duration;
+        });
+      });
+    });
+  }
+
+  const stats = {
+    total: results.length,
+    passed: results.filter(r => r.status === 'passed').length,
+    failed: results.filter(r => r.status === 'failed').length,
+    skipped: results.filter(r => r.status === 'skipped').length,
+    duration: totalDuration
+  };
+
+  return { stats, tests: results };
+}
 
 app.listen(port, () => {
   console.log(`Backend listening at http://localhost:${port}`);

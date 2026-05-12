@@ -1,94 +1,84 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+const fs = require('fs');
 
-test.describe('Checkout Logic Branch Coverage Tests', () => {
+// Ensure screenshots directory exists
+const screenshotsDir = path.join(__dirname, 'screenshots');
+if (!fs.existsSync(screenshotsDir)) {
+    fs.mkdirSync(screenshotsDir);
+}
 
-    test.beforeEach(async ({ page }) => {
-        const filePath = 'file://' + path.join(__dirname, 'sandbox.html');
-        await page.goto(filePath);
-    });
+test.describe('Checkout Page Logic Branch Coverage', () => {
 
-    test('valid input: should display correct total with positive integers', async ({ page }) => {
-        console.log('[STEP: TYPE] entering price 15000');
-        await page.fill('#price', '15000');
-        
-        console.log('[STEP: TYPE] entering qty 3');
-        await page.fill('#qty', '3');
-        
-        console.log('[STEP: CLICK] clicking button#check-btn');
-        await page.click('#check-btn');
+  test.beforeEach(async ({ page }) => {
+    await page.goto('file://' + path.join(__dirname, 'sandbox.html'));
+  });
 
-        const display = page.locator('#display');
-        await expect(display).toHaveText('Total: Rp 45.000');
-        await expect(display).toHaveCSS('color', 'rgb(0, 128, 0)'); // green
+  test('Success Case: Calculate total with valid positive integers', async ({ page }) => {
+    console.log('[STEP: TYPE] entering valid price: 5000');
+    await page.fill('#price', '5000');
+    
+    console.log('[STEP: TYPE] entering valid quantity: 3');
+    await page.fill('#qty', '3');
+    
+    console.log('[STEP: CLICK] clicking button#check-btn');
+    await page.click('#check-btn');
 
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    });
+    const display = page.locator('#display');
+    await expect(display).toHaveText('Total: Rp 15.000');
+    await expect(display).toHaveCSS('color', 'rgb(0, 128, 0)');
 
-    test('invalid input: should display error when price is zero (p <= 0 branch)', async ({ page }) => {
-        console.log('[STEP: TYPE] entering price 0');
-        await page.fill('#price', '0');
-        
-        console.log('[STEP: TYPE] entering qty 10');
-        await page.fill('#qty', '10');
-        
-        console.log('[STEP: CLICK] clicking button#check-btn');
-        await page.click('#check-btn');
+    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+  });
 
-        const display = page.locator('#display');
-        await expect(display).toHaveText('Input Tidak Valid');
-        await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)'); // red
+  test('Error Case: Invalid price (zero or negative)', async ({ page }) => {
+    console.log('[STEP: TYPE] entering invalid price: 0');
+    await page.fill('#price', '0');
+    
+    console.log('[STEP: TYPE] entering valid quantity: 5');
+    await page.fill('#qty', '5');
+    
+    console.log('[STEP: CLICK] clicking button#check-btn');
+    await page.click('#check-btn');
 
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    });
+    const display = page.locator('#display');
+    await expect(display).toHaveText('Input Tidak Valid');
+    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
 
-    test('invalid input: should display error when qty is negative (q <= 0 branch)', async ({ page }) => {
-        console.log('[STEP: TYPE] entering price 100');
-        await page.fill('#price', '100');
-        
-        console.log('[STEP: TYPE] entering qty -5');
-        await page.fill('#qty', '-5');
-        
-        console.log('[STEP: CLICK] clicking button#check-btn');
-        await page.click('#check-btn');
+    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+  });
 
-        const display = page.locator('#display');
-        await expect(display).toHaveText('Input Tidak Valid');
+  test('Error Case: Invalid quantity (zero or negative)', async ({ page }) => {
+    console.log('[STEP: TYPE] entering valid price: 1000');
+    await page.fill('#price', '1000');
+    
+    console.log('[STEP: TYPE] entering invalid quantity: -1');
+    await page.fill('#qty', '-1');
+    
+    console.log('[STEP: CLICK] clicking button#check-btn');
+    await page.click('#check-btn');
 
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    });
+    const display = page.locator('#display');
+    await expect(display).toHaveText('Input Tidak Valid');
+    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
 
-    test('invalid input: should display error when inputs are empty (isNaN branch)', async ({ page }) => {
-        console.log('[STEP: TYPE] leaving price empty');
-        await page.fill('#price', '');
-        
-        console.log('[STEP: TYPE] leaving qty empty');
-        await page.fill('#qty', '');
-        
-        console.log('[STEP: CLICK] clicking button#check-btn');
-        await page.click('#check-btn');
+    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+  });
 
-        const display = page.locator('#display');
-        await expect(display).toHaveText('Input Tidak Valid');
+  test('Error Case: Non-numeric or empty inputs', async ({ page }) => {
+    console.log('[STEP: TYPE] leaving price empty');
+    await page.fill('#price', '');
+    
+    console.log('[STEP: TYPE] entering valid quantity: 10');
+    await page.fill('#qty', '10');
+    
+    console.log('[STEP: CLICK] clicking button#check-btn');
+    await page.click('#check-btn');
 
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    });
+    const display = page.locator('#display');
+    await expect(display).toHaveText('Input Tidak Valid');
+    await expect(display).toHaveCSS('color', 'rgb(255, 0, 0)');
 
-    test('invalid input: should display error when price is non-numeric (isNaN branch)', async ({ page }) => {
-        // Playwright fill might be restricted by type="number", but we test the logic branch
-        console.log('[STEP: TYPE] entering invalid price string');
-        await page.fill('#price', 'abc');
-        
-        console.log('[STEP: TYPE] entering qty 1');
-        await page.fill('#qty', '1');
-        
-        console.log('[STEP: CLICK] clicking button#check-btn');
-        await page.click('#check-btn');
-
-        const display = page.locator('#display');
-        await expect(display).toHaveText('Input Tidak Valid');
-
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    });
-
+    await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+  });
 });

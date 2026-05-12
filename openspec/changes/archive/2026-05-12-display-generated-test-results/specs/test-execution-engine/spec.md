@@ -5,7 +5,7 @@ The system SHALL accept generated test scenarios, convert them into runnable Pla
 
 #### Scenario: Execute with Visual Evidence and JSON Report
 - **WHEN** user clicks "Run Test".
-- **THEN** the system executes the script in a sandboxed environment (e.g., spawning a child process to run `npx playwright test --reporter=json`).
+- **THEN** the system executes the script in a sandboxed environment with `--reporter=json`.
 - **AND** the system captures structured logs and screenshots for every major interaction.
-- **AND** the system streams results back to the frontend line by line until completion for visual rendering.
+- **AND** the system streams results back to the frontend line by line until completion.
 - **AND** the system reads the generated JSON report and sends the final structured result object to the frontend.
