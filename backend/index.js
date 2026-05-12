@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-dotenv.config();
+require("./src/config/loadEnv");
 
 const app = express();
 const port = process.env.PORT || 5001;

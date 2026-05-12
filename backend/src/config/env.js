@@ -1,3 +1,4 @@
+require("./loadEnv");
 const { z } = require("zod");
 
 const envSchema = z.object({
