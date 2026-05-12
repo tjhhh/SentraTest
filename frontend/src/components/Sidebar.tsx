@@ -24,8 +24,16 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname();
 
+  const isPathActive = (href: string) => {
+    // Exact match
+    if (pathname === href) return true;
+    // Check if current path starts with the href (for sub-pages like /blackbox/bva)
+    if (href !== '/' && pathname.startsWith(href)) return true;
+    return false;
+  };
+
   return (
-    <div className="flex flex-col h-screen w-64 bg-slate-900 text-slate-300 border-r border-slate-800">
+    <div className="flex flex-col min-h-screen w-64 bg-slate-900 text-slate-300 border-r border-slate-800 sticky top-0 max-h-screen overflow-y-auto">
       <div className="p-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
@@ -37,7 +45,7 @@ export function Sidebar() {
 
       <nav className="flex-1 px-4 py-4 space-y-1">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = isPathActive(item.href);
           return (
             <Link
               key={item.href}
