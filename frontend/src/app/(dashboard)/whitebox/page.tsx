@@ -2,13 +2,10 @@
 
 import React, { useState } from 'react';
 import { 
-  Code2, 
-  Terminal, 
   Play, 
   Settings, 
   Cpu, 
   CheckCircle2, 
-  XCircle,
   Loader2,
   Copy,
   Terminal as TerminalIcon
@@ -36,26 +33,67 @@ export default function WhiteboxPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      setOutput(prev => [...prev, '> Analysis complete. Identified 3 logical branches.']);
-      setOutput(prev => [...prev, '> Generating Playwright script...']);
+    setOutput(['> Analysis starting...', '> Sending code to Gemini API...']);
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/generate`, {
+        
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code : code, coverageType: selectedCoverage }),
+      });
+
+      if (!response.ok) {
+      // Ambil detail error dari backend (asumsi backend kirim JSON)
+      const errorData = await response.json().catch(() => ({})); 
+      const errorMessage = errorData.message || `Error: ${response.status} ${response.statusText}`;
+      
+      console.error("Detail Error Backend:", errorData); // Cek di console browser
+      throw new Error(errorMessage);
+    }
+
+      const data = await response.json();
+      setOutput(prev => [...prev, '> Analysis complete. Playwright script generated.']);
+      console.log('Generated Script:', data.script);
+    } catch (error) {
+      console.error(error);
+      setOutput(prev => [...prev, '[ERROR] Failed to generate script. Check backend logs.']);
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
-  const handleRun = () => {
+  const handleRun = async () => {
     setIsRunning(true);
     setOutput(prev => [...prev, '> Starting Playwright Runner...']);
     
-    setTimeout(() => {
-      setOutput(prev => [...prev, '[INFO] Running test case 1: Price > 100 & Type = VIP... PASS']);
-      setOutput(prev => [...prev, '[INFO] Running test case 2: Price > 100 & Type != VIP... PASS']);
-      setOutput(prev => [...prev, '[INFO] Running test case 3: Price <= 100... PASS']);
-      setOutput(prev => [...prev, '> Execution Finished. Total: 3, Failed: 0.']);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/whitebox/run`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) throw new Error('Failed to run tests');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+        setOutput(prev => [...prev, ...lines]);
+      }
+    } catch (error) {
+      console.error(error);
+      setOutput(prev => [...prev, '[ERROR] Failed to execute tests.']);
+    } finally {
       setIsRunning(false);
-    }, 3000);
+    }
   };
 
   return (
