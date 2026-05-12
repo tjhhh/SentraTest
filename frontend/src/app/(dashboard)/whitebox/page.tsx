@@ -1,22 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Play, 
   Settings, 
   Cpu, 
-  CheckCircle2, 
   Loader2,
-  Copy,
-  Terminal as TerminalIcon
+  Terminal as TerminalIcon,
+  Eye,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TestTimeline } from '@/components/TestTimeline';
+import { EvidenceGallery } from '@/components/EvidenceGallery';
 
 const coverageTypes = [
   { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
   { id: 'branch', name: 'Branch Coverage', description: 'Tests all possible paths through conditional branches.' },
   { id: 'path', name: 'Path Coverage', description: 'Tests every possible combination of paths.' },
 ];
+
+interface TestStep {
+  type: string;
+  description: string;
+  status: 'pending' | 'success' | 'failure';
+}
 
 export default function WhiteboxPage() {
   const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
@@ -34,9 +43,33 @@ export default function WhiteboxPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [output, setOutput] = useState<string[]>([]);
+  const [steps, setSteps] = useState<TestStep[]>([]);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+
+  const sandboxSrcDoc = useMemo(() => {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: sans-serif; padding: 20px; background: #f8fafc; }
+            button { padding: 8px 16px; background: #4f46e5; color: white; border: none; rounded: 4px; cursor: pointer; }
+            #result { margin-top: 10px; padding: 10px; background: white; border: 1px solid #e2e8f0; min-height: 20px; }
+          </style>
+        </head>
+        <body>
+          ${uiCode}
+          <script>${logicCode}</script>
+        </body>
+      </html>
+    `;
+  }, [uiCode, logicCode]);
 
   const handleProcess = async () => {
     setIsProcessing(true);
+    setSteps([]);
+    setScreenshots([]);
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
@@ -53,7 +86,6 @@ export default function WhiteboxPage() {
 
       const data = await response.json();
       setOutput(prev => [...prev, '> Analysis complete. UI-aware Playwright script generated.']);
-      console.log('Generated Script:', data.script);
     } catch (error: any) {
       console.error(error);
       setOutput(prev => [...prev, `[ERROR] ${error.message}`]);
@@ -64,7 +96,9 @@ export default function WhiteboxPage() {
 
   const handleRun = async () => {
     setIsRunning(true);
-    setOutput(prev => [...prev, '> Starting Playwright Runner...']);
+    setSteps([]);
+    setScreenshots([]);
+    setOutput(['> Starting Playwright Runner...']);
     
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/run`, {
@@ -82,8 +116,45 @@ export default function WhiteboxPage() {
         if (done) break;
         
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        setOutput(prev => [...prev, ...lines]);
+        const lines = chunk.split('\n');
+        
+        lines.forEach(line => {
+          if (line.trim() === '') return;
+          
+          setOutput(prev => [...prev, line]);
+
+          // Parse Steps
+          const stepMatch = line.match(/\[STEP: (.*?)\] (.*)/);
+          if (stepMatch) {
+            setSteps(prev => [...prev, {
+              type: stepMatch[1],
+              description: stepMatch[2],
+              status: 'success'
+            }]);
+          }
+
+          // Detect Failures in Logs
+          if (line.includes('✘') || line.includes('FAILED')) {
+            setSteps(prev => {
+              if (prev.length > 0) {
+                const last = [...prev];
+                last[last.length - 1].status = 'failure';
+                return last;
+              }
+              return prev;
+            });
+          }
+
+          // Parse Screenshots
+          const evidenceMatch = line.match(/\[EVIDENCE: SCREENSHOTS\] (.*)/);
+          if (evidenceMatch) {
+            const files = evidenceMatch[1].split(',').filter(f => f.trim() !== '');
+            if (files.length === 0 && steps.some(s => s.status === 'failure')) {
+               setOutput(prev => [...prev, '[SYSTEM] No screenshots captured due to test failure.']);
+            }
+            setScreenshots(files);
+          }
+        });
       }
     } catch (error: any) {
       console.error(error);
@@ -94,146 +165,142 @@ export default function WhiteboxPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Universal Whitebox Sandbox</h1>
-        <p className="text-slate-500">Analyze logic and UI to generate automated interaction tests.</p>
+    <div className="max-w-7xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 p-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sentra Sandbox</h1>
+          <p className="text-slate-500 mt-1">Visual Automated Testing for Logic & UI.</p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={handleProcess}
+            disabled={isProcessing}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
+            Generate Tests
+          </button>
+          <button
+            onClick={handleRun}
+            disabled={isRunning || output.length <= 2}
+            className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            Run Suite
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Editors */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-amber-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
-                </div>
-                <span className="ml-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Logic (JavaScript)</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Logic & UI Editor</span>
+            </div>
+            <div className="flex-1 flex flex-col">
+              <div className="h-1/2 border-b border-slate-100 relative">
+                <span className="absolute top-3 right-4 text-[10px] font-bold text-slate-400 uppercase z-10 bg-slate-900/50 px-2 py-1 rounded text-white">JavaScript</span>
+                <textarea
+                  value={logicCode}
+                  onChange={(e) => setLogicCode(e.target.value)}
+                  className="w-full h-full p-6 bg-slate-900 text-indigo-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                  spellCheck={false}
+                />
               </div>
-            </div>
-            <div className="p-0">
-              <textarea
-                value={logicCode}
-                onChange={(e) => setLogicCode(e.target.value)}
-                className="w-full h-48 p-6 bg-slate-900 text-indigo-300 font-mono text-sm outline-none resize-none leading-relaxed"
-                spellCheck={false}
-              />
-            </div>
-            
-            <div className="p-4 border-b border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-indigo-400" />
-                </div>
-                <span className="ml-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">UI (HTML / Framework Snippets)</span>
-              </div>
-            </div>
-            <div className="p-0">
-              <textarea
-                value={uiCode}
-                onChange={(e) => setUiCode(e.target.value)}
-                className="w-full h-48 p-6 bg-slate-800 text-emerald-300 font-mono text-sm outline-none resize-none leading-relaxed"
-                spellCheck={false}
-                placeholder="Paste HTML or Framework snippets here..."
-              />
-            </div>
-
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleProcess}
-                  disabled={isProcessing}
-                  className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all"
-                >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-                  Generate Interaction Script
-                </button>
-                <button
-                  onClick={handleRun}
-                  disabled={isRunning || output.length === 0}
-                  className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all"
-                >
-                  {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                  Run Tests
-                </button>
+              <div className="h-1/2 relative">
+                <span className="absolute top-3 right-4 text-[10px] font-bold text-slate-400 uppercase z-10 bg-slate-800/50 px-2 py-1 rounded text-white">HTML / UI</span>
+                <textarea
+                  value={uiCode}
+                  onChange={(e) => setUiCode(e.target.value)}
+                  className="w-full h-full p-6 bg-slate-800 text-emerald-300 font-mono text-sm outline-none resize-none leading-relaxed"
+                  spellCheck={false}
+                  placeholder="Paste UI snippet here..."
+                />
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-3 border-b border-slate-800 flex items-center gap-2 text-slate-400">
-              <TerminalIcon className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-widest">Execution Terminal</span>
-            </div>
-            <div className="p-6 h-48 overflow-y-auto font-mono text-xs space-y-1.5 custom-scrollbar">
-              {output.length === 0 ? (
-                <p className="text-slate-600 italic">No output yet. Process code to see results.</p>
-              ) : (
-                output.map((line, i) => (
-                  <p key={i} className={cn(
-                    line.startsWith('>') ? "text-indigo-400" : 
-                    line.includes('PASS') ? "text-green-400" : 
-                    line.includes('FAIL') ? "text-red-400" : "text-slate-300"
-                  )}>
-                    {line}
-                  </p>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
               <Settings className="w-5 h-5 text-indigo-600" />
               Coverage Settings
             </h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
               {coverageTypes.map((type) => (
                 <button
                   key={type.id}
                   onClick={() => setSelectedCoverage(type.id)}
                   className={cn(
-                    "w-full text-left p-4 rounded-xl border transition-all duration-200",
+                    "text-left p-3 rounded-xl border transition-all duration-200",
                     selectedCoverage === type.id
                       ? "bg-indigo-50 border-indigo-200 ring-1 ring-indigo-200"
                       : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                   )}
                 >
-                  <p className={cn(
-                    "font-semibold text-sm",
-                    selectedCoverage === type.id ? "text-indigo-700" : "text-slate-900"
-                  )}>
+                  <p className={cn("font-semibold text-sm", selectedCoverage === type.id ? "text-indigo-700" : "text-slate-900")}>
                     {type.name}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    {type.description}
                   </p>
                 </button>
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              Test Health
-            </h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <span className="text-sm text-slate-500 font-medium">Branch Coverage</span>
-                <span className="text-lg font-bold text-slate-900">85%</span>
-              </div>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-600 h-full w-[85%] rounded-full transition-all duration-1000" />
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Increase coverage by adding tests for the remaining 2 unvisited branches.
-              </p>
+        {/* Right Column: Preview & Results */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-[500px] flex flex-col">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+              <Eye className="w-4 h-4 text-slate-400" />
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Live Sandbox Preview</span>
             </div>
+            <div className="flex-1 bg-slate-100 p-4">
+              <iframe 
+                srcDoc={sandboxSrcDoc}
+                className="w-full h-full bg-white rounded-lg border border-slate-200 shadow-inner"
+                title="Sandbox"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="h-[500px]">
+              <TestTimeline steps={steps} />
+            </div>
+            <div className="h-[500px]">
+              <EvidenceGallery screenshots={screenshots} />
+            </div>
+          </div>
+
+          {/* Collapsible Terminal */}
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+            <button 
+              onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+              className="w-full p-4 flex items-center justify-between text-slate-400 hover:bg-slate-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <TerminalIcon className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-widest">Full Execution Logs</span>
+              </div>
+              {isTerminalOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            {isTerminalOpen && (
+              <div className="p-6 h-48 overflow-y-auto font-mono text-xs space-y-1.5 custom-scrollbar border-t border-slate-800">
+                {output.length === 0 ? (
+                  <p className="text-slate-600 italic">Waiting for execution...</p>
+                ) : (
+                  output.map((line, i) => (
+                    <p key={i} className={cn(
+                      line.startsWith('>') ? "text-indigo-400" : 
+                      line.includes('PASS') ? "text-green-400" : 
+                      line.includes('FAIL') ? "text-red-400" : "text-slate-500"
+                    )}>
+                      {line}
+                    </p>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
