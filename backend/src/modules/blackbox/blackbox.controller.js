@@ -17,6 +17,21 @@ async function generate(req, res, next) {
   }
 }
 
+async function history(req, res, next) {
+  try {
+    const data = await service.getHistory(req.params.conversationId);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: { message: "History not found" },
+      });
+    }
+    return successResponse(res, data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function script(req, res, next) {
   try {
     const data = await service.generateScript({
@@ -44,4 +59,4 @@ async function exportResult(req, res, next) {
   }
 }
 
-module.exports = { generate, script, exportResult };
+module.exports = { generate, history, script, exportResult };

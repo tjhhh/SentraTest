@@ -3,12 +3,33 @@ const express = require("express");
 const { authMiddleware } = require("../../middlewares/authMiddleware");
 const { validate } = require("../../middlewares/validate");
 const { generationLimiter } = require("../../middlewares/rateLimiters");
-const { generate, script, exportResult } = require("./blackbox.controller");
+const { generate, history, script, exportResult } = require("./blackbox.controller");
 const { generateSchema, scriptSchema, exportSchema } = require("./blackbox.schema");
 
 const router = express.Router();
 
 router.use(authMiddleware);
+
+/**
+ * @openapi
+ * /api/bb/history/{conversationId}:
+ *   get:
+ *     tags: [Blackbox]
+ *     summary: Ambil test case blackbox terakhir dalam percakapan
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Berhasil mengambil history
+ *       404:
+ *         description: History tidak ditemukan
+ */
+router.get("/history/:conversationId", history);
 
 /**
  * @openapi

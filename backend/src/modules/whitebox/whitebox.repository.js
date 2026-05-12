@@ -12,4 +12,16 @@ function createTestCase({ userId, conversationId, type, coverageType, payload })
   });
 }
 
-module.exports = { createTestCase };
+function findLatestByConversationId(conversationId, type) {
+  return prisma.testCase.findFirst({
+    where: {
+      conversationId,
+      type,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
+module.exports = { createTestCase, findLatestByConversationId };

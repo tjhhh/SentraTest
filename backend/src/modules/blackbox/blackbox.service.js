@@ -1,7 +1,7 @@
 const { buildPrompt } = require("../../services/ai/promptOrchestrator.service");
 const { generateText } = require("../../services/ai/gemini.service");
 const { parseJsonSafe, normalizeGenerationOutput } = require("../../services/ai/outputParser.service");
-const { createTestCase } = require("./blackbox.repository");
+const { createTestCase, findLatestByConversationId } = require("./blackbox.repository");
 
 async function generate({ userId, conversationId, method, requirement, requestId }) {
   const prompt = buildPrompt({
@@ -14,14 +14,24 @@ async function generate({ userId, conversationId, method, requirement, requestId
   const parsed = parseJsonSafe(ai.text);
   const output = normalizeGenerationOutput("blackbox", parsed);
 
+  const payload = {
+    ...output,
+    requirement,
+  };
+
   await createTestCase({
     userId,
     conversationId,
     type: `BLACKBOX_${method}`,
-    payload: output,
+    payload,
   });
 
-  return output;
+  return payload;
+}
+
+async function getHistory(conversationId) {
+  const latest = await findLatestByConversationId(conversationId);
+  return latest;
 }
 
 async function generateScript({ method, testCases }) {

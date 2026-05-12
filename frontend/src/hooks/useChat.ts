@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useConversationStore } from '@/store/conversationStore';
 import { chatService } from '@/services/chat.service';
+import { conversationService } from '@/services/conversation.service';
 import { Message } from '@/types/conversation';
 
 export const useChat = () => {
@@ -9,6 +10,29 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchMessages = useCallback(async (conversationId: string) => {
+    await Promise.resolve();
+    setMessages([]);
+    setIsLoading(true);
+    try {
+      const msgs = await conversationService.getMessages(conversationId);
+      setMessages(msgs);
+    } catch (err: any) {
+      console.error('Failed to fetch messages:', err);
+      setError(err.message || 'Failed to fetch messages');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeConversation) {
+      setTimeout(() => fetchMessages(activeConversation.id), 0);
+    } else {
+      setTimeout(() => setMessages([]), 0);
+    }
+  }, [activeConversation, fetchMessages]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;

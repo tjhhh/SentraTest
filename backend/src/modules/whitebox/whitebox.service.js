@@ -1,14 +1,14 @@
 const { buildPrompt } = require("../../services/ai/promptOrchestrator.service");
 const { generateText } = require("../../services/ai/gemini.service");
 const { parseJsonSafe, normalizeGenerationOutput } = require("../../services/ai/outputParser.service");
-const { createTestCase } = require("./whitebox.repository");
+const { createTestCase, findLatestByConversationId } = require("./whitebox.repository");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const { appLogger } = require("../../config/logger");
 const { env } = require("../../config/env");
 
-async function analyze({ userId, conversationId, coverageType, sourceCode, requestId }) {
+async function analyze({ userId, conversationId, coverageType, sourceCode, uiCode, requestId }) {
   const prompt = buildPrompt({
     mode: "whitebox-analyze",
     input: sourceCode,
@@ -19,15 +19,26 @@ async function analyze({ userId, conversationId, coverageType, sourceCode, reque
   const parsed = parseJsonSafe(ai.text);
   const output = normalizeGenerationOutput("whitebox", parsed);
 
+  const payload = {
+    ...output,
+    logicCode: sourceCode,
+    uiCode: uiCode || "",
+  };
+
   await createTestCase({
     userId,
     conversationId,
     type: "WHITEBOX",
     coverageType,
-    payload: output,
+    payload,
   });
 
-  return output;
+  return payload;
+}
+
+async function getHistory(conversationId) {
+  const latest = await findLatestByConversationId(conversationId, "WHITEBOX");
+  return latest;
 }
 
 function script({ analysis }) {
@@ -262,9 +273,9 @@ function parsePlaywrightJson(data) {
               duration: result.duration,
               error: result.errors?.length
                 ? {
-                    message: result.errors[0].message,
-                    stack: result.errors[0].stack,
-                  }
+                  message: result.errors[0].message,
+                  stack: result.errors[0].stack,
+                }
                 : null,
             });
 
@@ -292,4 +303,4 @@ function parsePlaywrightJson(data) {
   return { stats, tests: results };
 }
 
-module.exports = { analyze, script, generateTestScript, runTestScript };
+module.exports = { analyze, getHistory, script, generateTestScript, runTestScript };

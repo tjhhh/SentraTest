@@ -26,4 +26,10 @@ export const bbService = {
    */
   export: (data: BBExportParams) => 
     api.post<BBExportResponse>("/bb/export", data),
+
+  /**
+   * Retrieves blackbox history for a conversation.
+   */
+  getHistory: (conversationId: string) => 
+    api.get<any>(`/bb/history/${conversationId}`),
 };

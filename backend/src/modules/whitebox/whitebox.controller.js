@@ -10,9 +10,25 @@ async function analyze(req, res, next) {
       conversationId: req.body.conversationId,
       coverageType: req.body.coverageType,
       sourceCode: req.body.sourceCode,
+      uiCode: req.body.uiCode,
       requestId: req.requestId,
     });
 
+    return successResponse(res, data);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function history(req, res, next) {
+  try {
+    const data = await service.getHistory(req.params.conversationId);
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: { message: "History not found" },
+      });
+    }
     return successResponse(res, data);
   } catch (error) {
     return next(error);
@@ -69,4 +85,4 @@ async function run(req, res, next) {
   }
 }
 
-module.exports = { analyze, script, generate, run };
+module.exports = { analyze, history, script, generate, run };

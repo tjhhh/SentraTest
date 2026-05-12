@@ -13,4 +13,10 @@ export const wbService = {
    */
   script: (analysis: any) => 
     api.post<WBScriptResponse>("/wb/script", { analysis }),
+
+  /**
+   * Retrieves whitebox history for a conversation.
+   */
+  getHistory: (conversationId: string) => 
+    api.get<any>(`/wb/history/${conversationId}`),
 };

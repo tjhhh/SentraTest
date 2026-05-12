@@ -13,6 +13,7 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
   messages?: Message[];
+  testCases?: { type: string }[];
 }
 
 export interface ConversationState {

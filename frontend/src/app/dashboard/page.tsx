@@ -109,10 +109,6 @@ export default function Dashboard() {
                 <span className="text-sm text-slate-700">Scan Code for Coverage</span>
                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600" />
               </Link>
-              <Link href="/dashboard/bug-explainer" className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 group">
-                <span className="text-sm text-slate-700">Explain Stack Trace</span>
-                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600" />
-              </Link>
             </div>
           </div>
         </div>

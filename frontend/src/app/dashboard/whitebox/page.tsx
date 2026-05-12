@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Play, 
   Settings, 
@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { TestTimeline } from '@/components/TestTimeline';
 import { EvidenceGallery } from '@/components/EvidenceGallery';
 import TestResults, { TestStats, TestResult } from '@/components/TestResults';
+import { useConversationStore } from '@/store/conversationStore';
+import { wbService } from '@/services/wb.service';
 
 const coverageTypes = [
   { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
@@ -29,15 +31,7 @@ interface TestStep {
 }
 
 export default function WhiteboxPage() {
-  const apiBaseRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const apiBase = apiBaseRaw.replace(/\/+$/, '');
-  const buildApiUrl = (path: string) => {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    if (apiBase.endsWith('/api')) {
-      return `${apiBase}${normalizedPath}`;
-    }
-    return `${apiBase}/api${normalizedPath}`;
-  };
+  const { activeConversation } = useConversationStore();
 
   const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {
@@ -58,6 +52,48 @@ export default function WhiteboxPage() {
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [testResults, setTestResults] = useState<{ stats: TestStats; tests: TestResult[] } | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadHistory() {
+      await Promise.resolve();
+      // Reset state before loading new conversation
+      setLogicCode(`function calculateDiscount(price, type) {
+  if (price > 100) {
+    if (type === 'VIP') {
+      return price * 0.8;
+    }
+    return price * 0.9;
+  }
+  return price;
+}`);
+      setUiCode(`<button id="calculate-btn">Calculate</button>\n<div id="result"></div>`);
+      setSelectedCoverage('branch');
+      setOutput([]);
+      setSteps([]);
+      setScreenshots([]);
+      setTestResults(null);
+
+      if (!activeConversation) return;
+
+      try {
+        setIsProcessing(true);
+        const history = await wbService.getHistory(activeConversation.id);
+        if (history && history.payload) {
+          if (history.payload.logicCode) setLogicCode(history.payload.logicCode);
+          if (history.payload.uiCode) setUiCode(history.payload.uiCode);
+          if (history.coverageType) setSelectedCoverage(history.coverageType.toLowerCase());
+          
+          setOutput(['> Loaded previous session data.']);
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    loadHistory();
+  }, [activeConversation]);
 
   const sandboxSrcDoc = useMemo(() => {
     return `
@@ -86,7 +122,7 @@ export default function WhiteboxPage() {
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
-      const response = await fetch(buildApiUrl('/wb/generate'), {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logicCode, uiCode, coverageType: selectedCoverage }),
@@ -94,11 +130,10 @@ export default function WhiteboxPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})); 
-        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to generate script');
+        throw new Error(errorData.error || 'Failed to generate script');
       }
 
-      const payload = await response.json();
-      const data = payload?.data || payload;
+      const data = await response.json();
       
       if (data.testTitles) {
         setTestResults({
@@ -124,7 +159,7 @@ export default function WhiteboxPage() {
     setOutput(['> Starting Playwright Runner...']);
     
     try {
-      const response = await fetch(buildApiUrl('/wb/run'), {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/run`, {
         method: 'POST',
       });
 
