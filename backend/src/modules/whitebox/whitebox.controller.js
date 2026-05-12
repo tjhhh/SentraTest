@@ -46,7 +46,7 @@ async function generate(req, res, next) {
 
 async function run(req, res, next) {
   try {
-    const screenshotsDir = path.join(__dirname, "screenshots");
+    const screenshotsDir = path.join(__dirname, "../../screenshots");
 
     // Ensure screenshots directory exists
     if (!fs.existsSync(screenshotsDir)) {
@@ -60,6 +60,11 @@ async function run(req, res, next) {
     const result = await service.runTestScript(screenshotsDir, (chunk) => {
       res.write(chunk);
     });
+
+    // Send screenshots log marker for frontend gallery
+    if (result.screenshots && result.screenshots.length > 0) {
+      res.write(`\n[EVIDENCE: SCREENSHOTS] ${result.screenshots.join(",")}\n`);
+    }
 
     // Send final result marker
     const finalResult = {

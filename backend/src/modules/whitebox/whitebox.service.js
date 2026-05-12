@@ -57,7 +57,7 @@ async function generateTestScript({ logicCode, uiCode, coverageType, requestId =
     2. IMPORTANT for <input type="number">: 
        - To enter valid numbers, use page.fill(selector, value).
        - To test invalid non-numeric characters (like 'abc') on a type="number" field, use page.pressSequentially(selector, value) or page.type(selector, value) instead of fill(), as fill() is blocked by browsers for non-numeric values on these fields.
-    3. At the end of each test case, take a screenshot and save it to the 'screenshots' directory with a descriptive name: await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+    3. At the end of each test case, take a screenshot and save it to the shared screenshots directory: await page.screenshot({ path: path.join(__dirname, '../../screenshots', 'result-' + Date.now() + '.png') });
     4. The screenshot filename MUST start with 'result-' and end with '.png'.
     5. Make sure to import 'path' in the test script.
     6. Ensure each [STEP: ...] log is printed on a NEW LINE to ensure correct frontend parsing.

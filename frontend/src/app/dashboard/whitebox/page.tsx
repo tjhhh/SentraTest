@@ -183,10 +183,17 @@ export default function WhiteboxPage() {
           if (resultMatch) {
             try {
               const envelope = JSON.parse(resultMatch[1]);
-              if (envelope.data && envelope.data.results) {
-                setTestResults(envelope.data.results);
+              const data = envelope.data || envelope;
+              
+              if (data.results) {
+                setTestResults(data.results);
               } else {
                 setTestResults(envelope);
+              }
+
+              // Backup: extract screenshots from final result if log marker was missed
+              if (data.screenshots && data.screenshots.length > 0) {
+                setScreenshots(data.screenshots);
               }
             } catch (err) {
               console.error('Failed to parse result JSON', err);

@@ -76,7 +76,7 @@ export default function WhiteboxPage() {
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/generate`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wb/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logicCode, uiCode, coverageType: selectedCoverage }),
@@ -114,7 +114,7 @@ export default function WhiteboxPage() {
     setOutput(['> Starting Playwright Runner...']);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/run`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wb/run`, {
         method: 'POST',
       });
 
@@ -173,10 +173,17 @@ export default function WhiteboxPage() {
           if (resultMatch) {
             try {
               const envelope = JSON.parse(resultMatch[1]);
-              if (envelope.data && envelope.data.results) {
-                setTestResults(envelope.data.results);
+              const data = envelope.data || envelope;
+              
+              if (data.results) {
+                setTestResults(data.results);
               } else {
                 setTestResults(envelope);
+              }
+
+              // Backup: extract screenshots from final result if log marker was missed
+              if (data.screenshots && data.screenshots.length > 0) {
+                setScreenshots(data.screenshots);
               }
             } catch (err) {
               console.error('Failed to parse result JSON', err);

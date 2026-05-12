@@ -6,7 +6,7 @@ interface EvidenceGalleryProps {
 }
 
 export const EvidenceGallery: React.FC<EvidenceGalleryProps> = ({ screenshots }) => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
