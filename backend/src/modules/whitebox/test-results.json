@@ -1,6 +1,6 @@
 {
   "config": {
-    "rootDir": "D:/SentraTest/backend",
+    "rootDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/branch ojan/SentraTest/backend",
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -15,7 +15,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "D:/SentraTest/backend/test-results",
+        "outputDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/branch ojan/SentraTest/backend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -23,7 +23,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "D:/SentraTest/backend",
+        "testDir": "C:/Users/RAFFA/Desktop/Coding/HACKATHON/branch ojan/SentraTest/backend",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -49,7 +49,7 @@
     "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
     "version": "1.60.0",
-    "workers": 8,
+    "workers": 6,
     "webServer": null
   },
   "suites": [
@@ -82,7 +82,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 950,
+                      "duration": 3339,
                       "errors": [],
                       "stdout": [
                         {
@@ -97,7 +97,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-12T19:21:50.181Z",
+                      "startTime": "2026-05-12T21:43:49.523Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -126,7 +126,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 705,
+                      "duration": 493,
                       "errors": [],
                       "stdout": [
                         {
@@ -138,7 +138,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-12T19:21:51.250Z",
+                      "startTime": "2026-05-12T21:43:54.020Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -167,7 +167,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 723,
+                      "duration": 417,
                       "errors": [],
                       "stdout": [
                         {
@@ -182,7 +182,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-12T19:21:51.971Z",
+                      "startTime": "2026-05-12T21:43:54.524Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -211,7 +211,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 806,
+                      "duration": 453,
                       "errors": [],
                       "stdout": [
                         {
@@ -226,7 +226,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-12T19:21:52.704Z",
+                      "startTime": "2026-05-12T21:43:54.956Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -255,7 +255,7 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 727,
+                      "duration": 411,
                       "errors": [],
                       "stdout": [
                         {
@@ -267,7 +267,7 @@
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-05-12T19:21:53.519Z",
+                      "startTime": "2026-05-12T21:43:55.425Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -287,8 +287,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-05-12T19:21:49.650Z",
-    "duration": 4688.034,
+    "startTime": "2026-05-12T21:43:48.846Z",
+    "duration": 7099.816,
     "expected": 5,
     "skipped": 0,
     "unexpected": 0,

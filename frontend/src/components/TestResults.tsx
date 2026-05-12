@@ -78,7 +78,7 @@ const TestCaseItem = ({ test, onSelect }: { test: TestResult; onSelect?: (title:
 };
 
 export default function TestResults({ results, onSelectTestCase }: TestResultsProps) {
-  if (!results) return null;
+  if (!results || !results.stats || !results.tests) return null;
 
   const { stats, tests } = results;
 

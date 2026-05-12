@@ -182,8 +182,12 @@ export default function WhiteboxPage() {
           const resultMatch = line.match(/\[RESULT: JSON\] (.*)/);
           if (resultMatch) {
             try {
-              const data = JSON.parse(resultMatch[1]);
-              setTestResults(data);
+              const envelope = JSON.parse(resultMatch[1]);
+              if (envelope.data && envelope.data.results) {
+                setTestResults(envelope.data.results);
+              } else {
+                setTestResults(envelope);
+              }
             } catch (err) {
               console.error('Failed to parse result JSON', err);
             }

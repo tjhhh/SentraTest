@@ -54,9 +54,13 @@ async function generateTestScript({ logicCode, uiCode, coverageType, requestId =
 
     CRITICAL INSTRUCTIONS:
     1. For every major interaction (click, type, etc.), console.log a step marker like: console.log('[STEP: CLICK] clicking button#calculate-btn');
-    2. At the end of each test case, take a screenshot and save it to the 'screenshots' directory with a descriptive name: await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
-    3. The screenshot filename MUST start with 'result-' and end with '.png'.
-    4. Make sure to import 'path' in the test script.
+    2. IMPORTANT for <input type="number">: 
+       - To enter valid numbers, use page.fill(selector, value).
+       - To test invalid non-numeric characters (like 'abc') on a type="number" field, use page.pressSequentially(selector, value) or page.type(selector, value) instead of fill(), as fill() is blocked by browsers for non-numeric values on these fields.
+    3. At the end of each test case, take a screenshot and save it to the 'screenshots' directory with a descriptive name: await page.screenshot({ path: path.join(__dirname, 'screenshots', 'result-' + Date.now() + '.png') });
+    4. The screenshot filename MUST start with 'result-' and end with '.png'.
+    5. Make sure to import 'path' in the test script.
+    6. Ensure each [STEP: ...] log is printed on a NEW LINE to ensure correct frontend parsing.
 
     Return the result as a JSON object with two keys:
     - "script": The full Playwright test script code (string).
@@ -177,7 +181,7 @@ function generateSandboxHTML(logic, ui) {
   `;
 }
 
-async function runTestScript(screenshotsDirPath) {
+async function runTestScript(screenshotsDirPath, onData) {
   return new Promise((resolve, reject) => {
     const resultsPath = path.join(__dirname, "test-results.json");
     const testFilePath = path.join(__dirname, "temp-test.spec.js");
@@ -210,11 +214,15 @@ async function runTestScript(screenshotsDirPath) {
     let stderr = "";
 
     child.stdout.on("data", (data) => {
-      stdout += data.toString();
+      const chunk = data.toString();
+      stdout += chunk;
+      if (onData) onData(chunk);
     });
 
     child.stderr.on("data", (data) => {
-      stderr += data.toString();
+      const chunk = data.toString();
+      stderr += chunk;
+      if (onData) onData(chunk);
     });
 
     child.on("close", (code) => {

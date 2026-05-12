@@ -1,21 +1,27 @@
-FROM node:22-alpine AS base
+FROM mcr.microsoft.com/playwright:v1.60.0-noble AS runner
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
 
-FROM base AS deps
-RUN npm ci
+# Install dependencies (including @playwright/test from devDependencies)
+RUN npm install
 
-FROM deps AS build
+# Install only Chromium and its system dependencies
+RUN npx playwright install chromium --with-deps
+
+# Copy app source
 COPY . .
+
+# Generate Prisma Client
 RUN npx prisma generate
 
-FROM node:22-alpine AS runner
-WORKDIR /app
+# Environment variables
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/prisma.config.ts ./prisma.config.ts
-COPY --from=build /app/src ./src
-COPY --from=build /app/package*.json ./
+ENV PORT=4000
+
 EXPOSE 4000
-CMD ["node", "src/server.js"]
+
+# Run migrations and start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]

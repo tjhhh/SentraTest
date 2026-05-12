@@ -53,17 +53,26 @@ async function run(req, res, next) {
       fs.mkdirSync(screenshotsDir, { recursive: true });
     }
 
-    const result = await service.runTestScript(screenshotsDir);
+    // Set headers for streaming
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Transfer-Encoding", "chunked");
 
-    // Send results as JSON
-    return res.json({
+    const result = await service.runTestScript(screenshotsDir, (chunk) => {
+      res.write(chunk);
+    });
+
+    // Send final result marker
+    const finalResult = {
       success: true,
       data: {
         exitCode: result.exitCode,
         screenshots: result.screenshots,
         results: result.results,
       },
-    });
+    };
+
+    res.write(`\n[RESULT: JSON] ${JSON.stringify(finalResult)}\n`);
+    res.end();
   } catch (error) {
     return next(error);
   }
