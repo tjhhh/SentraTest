@@ -168,6 +168,8 @@ describe('Chats Route Integration Tests', () => {
       expect(res.body.data).toBeInstanceOf(Array);
       expect(res.body.data.length).toBeGreaterThanOrEqual(1);
       expect(res.body.data[0].id).toBe(testChatId);
+      expect(res.body.data[0]).toHaveProperty('preview');
+      expect(typeof res.body.data[0].preview).toBe('string');
     });
 
     it('should return empty array for non-matching keyword', async () => {

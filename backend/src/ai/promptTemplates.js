@@ -196,13 +196,18 @@ PENTING: Respond dengan JSON object SAJA. Jangan tambahkan text, markdown code f
  * @param {Array<{role: string, content: string}>} [params.history] - Previous messages
  * @returns {string} Complete prompt
  */
-function buildChatPrompt({ userMessage, history = [] }) {
+function buildChatPrompt({ userMessage, history = [], context = null }) {
   let contextBlock = '';
+  if (context && typeof context === 'object' && Object.keys(context).length > 0) {
+    const formattedContext = JSON.stringify(context, null, 2);
+    contextBlock += `Konteks tambahan percakapan:\n${formattedContext}\n\n`;
+  }
+
   if (history.length > 0) {
     const formatted = history
       .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
       .join('\n\n');
-    contextBlock = `Riwayat percakapan sebelumnya:\n${formatted}\n\n---\n\n`;
+    contextBlock += `Riwayat percakapan sebelumnya:\n${formatted}\n\n---\n\n`;
   }
 
   return `Anda adalah SentraTest AI Assistant — asisten QA dan testing yang membantu pengguna dengan pertanyaan seputar software testing, quality assurance, dan debugging.

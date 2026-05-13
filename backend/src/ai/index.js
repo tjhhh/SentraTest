@@ -134,11 +134,11 @@ async function chat(chatId, userId, message) {
   // Save user message to DB
   await repo.addMessage(chatId, userId, 'user', message);
 
-  // Load conversation history
-  const history = await buildConversationHistory(chatId);
+  // Load conversation history and stored context
+  const { context, history } = await buildConversationHistory(chatId);
 
-  // Build prompt with context
-  const prompt = buildChatPrompt({ userMessage: message, history });
+  // Build prompt with stored chat context and recent message history
+  const prompt = buildChatPrompt({ userMessage: message, history, context });
 
   // No caching for chat (conversations are unique)
   const { result: reply, queuePosition, queueLength } = await queue.enqueue(async () => {

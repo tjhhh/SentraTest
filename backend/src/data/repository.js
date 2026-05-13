@@ -1,13 +1,10 @@
 const { Pool } = require('pg');
 const { DatabaseError } = require('../middleware/errorHandler');
+const { prisma } = require('../config/prisma');
 
 
 const pool = new Pool({
-  host: process.env.PGHOST || 'localhost',
-  port: Number(process.env.PGPORT) || 5432,
-  user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'postgres',
-  database: process.env.PGDATABASE || 'sentra',
+  connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
@@ -120,46 +117,59 @@ async function deleteUser(userId) {
 // ---------------------------------------------------------------------------
 // Chats
 // ---------------------------------------------------------------------------
-async function createChat(userId, title) {
-  const res = await pool.query(
-    `INSERT INTO chats (user_id, title, created_at, updated_at)
-     VALUES ($1, $2, now(), now())
-     RETURNING id`,
-    [userId, title]
-  );
-  return res.rows[0].id;
+async function createChat(userId, title, context = null) {
+  const chat = await prisma.conversation.create({
+    data: {
+      userId,
+      title,
+      context: context || undefined,
+    },
+  });
+  return chat.id;
 }
 
-async function createChatWithMessage(userId, title, messageContent) {
-  return withTransaction(async (client) => {
-    const chatRes = await client.query(
-      `INSERT INTO chats (user_id, title, created_at, updated_at)
-       VALUES ($1, $2, now(), now()) RETURNING id`,
-      [userId, title]
-    );
-    const chatId = chatRes.rows[0].id;
-    await client.query(
-      `INSERT INTO messages (chat_id, user_id, role, content, created_at)
-       VALUES ($1, $2, 'user', $3, now())`,
-      [chatId, userId, messageContent]
-    );
-    return chatId;
+async function createChatWithMessage(userId, title, messageContent, context = null) {
+  const chat = await prisma.conversation.create({
+    data: {
+      userId,
+      title,
+      context: context || undefined,
+      messages: {
+        create: {
+          role: 'USER',
+          content: messageContent,
+        },
+      },
+    },
+  });
+  return chat.id;
+}
+
+async function getChatById(chatId) {
+  return prisma.conversation.findUnique({
+    where: { id: chatId },
+  });
+}
+
+async function updateChatContext(chatId, context) {
+  await prisma.conversation.update({
+    where: { id: chatId },
+    data: { context: context || undefined },
   });
 }
 
 async function listChatsByUser(userId, limit = 20, offset = 0) {
-  const res = await pool.query(
-    `SELECT id, title, created_at, updated_at FROM chats
-     WHERE user_id = $1 ORDER BY updated_at DESC LIMIT $2 OFFSET $3`,
-    [userId, limit, offset]
-  );
-  return res.rows;
+  return prisma.conversation.findMany({
+    where: { userId },
+    take: limit,
+    skip: offset,
+    orderBy: { updatedAt: 'desc' },
+  });
 }
 
 async function deleteChatById(chatId) {
-  await withTransaction(async (client) => {
-    await client.query(`DELETE FROM messages WHERE chat_id = $1`, [chatId]);
-    await client.query(`DELETE FROM chats WHERE id = $1`, [chatId]);
+  await prisma.conversation.delete({
+    where: { id: chatId },
   });
 }
 
@@ -167,23 +177,32 @@ async function deleteChatById(chatId) {
 // Messages
 // ---------------------------------------------------------------------------
 async function addMessage(chatId, userId, role, content) {
-  const res = await pool.query(
-    `INSERT INTO messages (chat_id, user_id, role, content, created_at)
-     VALUES ($1, $2, $3, $4, now()) RETURNING id`,
-    [chatId, userId, role, content]
-  );
-  // bump chat updated_at
-  await pool.query(`UPDATE chats SET updated_at = now() WHERE id = $1`, [chatId]);
-  return res.rows[0].id;
+  const message = await prisma.message.create({
+    data: {
+      conversationId: chatId,
+      role: role.toUpperCase(),
+      content,
+    },
+  });
+  // Bump updated_at
+  await prisma.conversation.update({
+    where: { id: chatId },
+    data: { updatedAt: new Date() },
+  });
+  return message.id;
 }
 
 async function listMessagesByChat(chatId, limit = 100, offset = 0) {
-  const res = await pool.query(
-    `SELECT id, role, content, created_at FROM messages
-     WHERE chat_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
-    [chatId, limit, offset]
-  );
-  return res.rows;
+  const messages = await prisma.message.findMany({
+    where: { conversationId: chatId },
+    take: limit,
+    skip: offset,
+    orderBy: { createdAt: 'asc' },
+  });
+  return messages.map(msg => ({
+    ...msg,
+    role: msg.role.toLowerCase(),
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -281,12 +300,34 @@ async function updateChatTitle(chatId, title) {
 
 async function searchChatMessages(userId, keyword, limit = 20, offset = 0) {
   const res = await pool.query(
-    `SELECT DISTINCT c.id, c.title, c.created_at, c.updated_at,
-            ts_rank(to_tsvector('english', m.content), plainto_tsquery($2)) AS rank
-     FROM chats c
-     JOIN messages m ON m.chat_id = c.id
-     WHERE c.user_id = $1
-       AND to_tsvector('english', m.content) @@ plainto_tsquery($2)
+    `SELECT * FROM (
+       SELECT DISTINCT ON (c.id)
+         c.id,
+         c.title,
+         c.context,
+         c.created_at,
+         c.updated_at,
+         ts_rank_cd(
+           setweight(to_tsvector('english', coalesce(c.title, '')), 'A') ||
+           setweight(to_tsvector('english', coalesce(c.context::text, '')), 'B') ||
+           setweight(to_tsvector('english', coalesce(m.content, '')), 'C'),
+           plainto_tsquery('english', $2)
+         ) AS rank,
+         ts_headline(
+           'english',
+           m.content,
+           plainto_tsquery('english', $2),
+           'MaxFragments=1, MinWords=5, MaxWords=20'
+         ) AS preview
+       FROM chats c
+       JOIN messages m ON m.chat_id = c.id
+       WHERE c.user_id = $1
+         AND (
+           to_tsvector('english', coalesce(c.title, '') || ' ' || coalesce(c.context::text, '')) @@ plainto_tsquery('english', $2)
+           OR to_tsvector('english', coalesce(m.content, '')) @@ plainto_tsquery('english', $2)
+         )
+       ORDER BY c.id, rank DESC
+     ) AS sub
      ORDER BY rank DESC
      LIMIT $3 OFFSET $4`,
     [userId, keyword, limit, offset]
@@ -318,6 +359,8 @@ module.exports = {
   createChat: wrap(createChat), 
   createChatWithMessage: wrap(createChatWithMessage), 
   listChatsByUser: wrap(listChatsByUser), 
+  getChatById: wrap(getChatById),
+  updateChatContext: wrap(updateChatContext),
   deleteChatById: wrap(deleteChatById),
   updateChatTitle: wrap(updateChatTitle),
   searchChatMessages: wrap(searchChatMessages),

@@ -11,9 +11,13 @@ import {
   ThumbsDown,
   Paperclip,
   Zap,
-  Loader2
+  Loader2,
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/authStore';
+import { api } from '@/services/api';
 
 interface Message {
   role: 'assistant' | 'user';
@@ -21,26 +25,83 @@ interface Message {
   time: string;
 }
 
+interface Chat {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: "Hello! I'm your SentraTest AI Assistant. I can help you with test strategies, explain bugs, or answer questions about your test cases. How can I help you today?",
-      time: '10:00 AM'
-    }
-  ]);
+  const { user } = useAuthStore();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
+  const activeConversation: { title: string } | null = null;
+  const BUG_TEMPLATE = 'Please describe the bug you would like analyzed.';
+  const STRATEGY_TEMPLATE = 'Please suggest a testing strategy for the current scenario.';
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch chats on mount
+  useEffect(() => {
+    if (user?.id) {
+      setIsLoadingChats(true);
+      api.get<{ data: Chat[] }>('/chats')
+        .then(data => {
+          setChats(data);
+        })
+        .catch(err => {
+          console.error("Failed to fetch chats", err);
+        })
+        .finally(() => setIsLoadingChats(false));
+    }
+  }, [user]);
+
+  // Create chat if none exists
+  useEffect(() => {
+    if (user?.id && !chatId) {
+      setIsLoading(true);
+      api.post<{ id: string; welcomeMessage: string }>('/chats', {})
+        .then(data => {
+          setChatId(data.id);
+          setMessages([
+            {
+              role: 'assistant',
+              content: data.welcomeMessage,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+          // Refresh chats list
+          return api.get<{ data: Chat[] }>(`/chats?userId=${user.id}`);
+        })
+        .then(data => {
+          if (data) setChats(data);
+        })
+        .catch(err => {
+          console.error("Failed to create chat", err);
+          setMessages([
+            {
+              role: 'assistant',
+              content: "Hello! I'm your SentraTest AI Assistant. I failed to connect to the server, but I'm still here to help.",
+              time: '10:00 AM'
+            }
+          ]);
+        })
+        .finally(() => setIsLoading(false));
+    }
+  }, [user, chatId]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isStreaming]);
+  }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || !chatId || !user?.id) return;
 
     const userMsg: Message = {
       role: 'user',
@@ -52,141 +113,232 @@ export default function AssistantPage() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const data = await api.post<{ assistantReply: string }>(`/chats/${chatId}/messages`, {
+        content: input
+      });
+
       const assistantMsg: Message = {
         role: 'assistant',
-        content: "That's a great question. Based on the logic you've shared, I recommend using Boundary Value Analysis for the 'price' field, as it has specific thresholds at 100. This will ensure we cover the most critical edge cases efficiently.",
+        content: data.assistantReply || "No reply received.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages(prev => [...prev, assistantMsg]);
+    } catch (error) {
+      console.error("Failed to send message", error);
+      const errorMsg: Message = {
+        role: 'assistant',
+        content: "Sorry, I encountered an error while processing your request.",
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
+  };
+
+  const loadChat = (id: string) => {
+    setChatId(id);
+    setIsLoading(true);
+    api.get<{ data: any[] }>(`/chats/${id}/messages`)
+      .then(data => {
+        const mappedMessages: Message[] = data.data.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setMessages(mappedMessages);
+      })
+      .catch(err => {
+        console.error("Failed to load messages", err);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const handleNewChat = () => {
+    setChatId(null);
+    setMessages([]);
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-160px)] flex flex-col animate-in fade-in duration-500">
-      <div className="bg-white rounded-t-2xl border-x border-t border-slate-200 p-6 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100">
-            <Bot className="text-white w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Gemini Assistant</h1>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">
-                {activeConversation ? activeConversation.title : 'Online & Ready to Help'}
-              </span>
-            </div>
-          </div>
-        </div>
+    <div className="flex gap-4 h-[calc(100vh-160px)] max-w-6xl mx-auto animate-in fade-in duration-500">
+      {/* Sidebar */}
+      <div className="w-64 bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
         <button
-          onClick={() => setMessages([messages[0]])}
-          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-          title="Clear Conversation"
+          onClick={handleNewChat}
+          className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all font-medium text-sm shadow-sm"
         >
-          <RotateCcw className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
+          New Chat
         </button>
-      </div>
 
-      <div
-        ref={scrollRef}
-        className="flex-1 bg-white border-x border-slate-200 overflow-y-auto p-6 space-y-6 custom-scrollbar"
-      >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={cn(
-              "flex gap-4 animate-in slide-in-from-bottom-2 duration-300",
-              msg.role === 'user' ? "flex-row-reverse" : ""
-            )}
-          >
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-              msg.role === 'assistant' ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-600"
-            )}>
-              {msg.role === 'assistant' ? <Sparkles className="w-5 h-5" /> : <User className="w-5 h-5" />}
+        <div className="border-t border-slate-100 my-1" />
+
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">History</h2>
+        
+        <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+          {isLoadingChats ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
             </div>
-            <div className={cn(
-              "max-w-[80%] space-y-2",
-              msg.role === 'user' ? "items-end" : ""
-            )}>
-              <div className={cn(
-                "p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-                msg.role === 'assistant'
-                  ? "bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100"
-                  : "bg-indigo-600 text-white rounded-tr-none"
-              )}>
-                {msg.content}
-              </div>
-              <div className={cn(
-                "flex items-center gap-3 px-1",
-                msg.role === 'user' ? "flex-row-reverse" : ""
-              )}>
-                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">{msg.time}</span>
-                {msg.role === 'assistant' && (
-                  <div className="flex items-center gap-2">
-                    <button className="text-slate-300 hover:text-indigo-500 transition-colors"><ThumbsUp className="w-3 h-3" /></button>
-                    <button className="text-slate-300 hover:text-red-500 transition-colors"><ThumbsDown className="w-3 h-3" /></button>
-                  </div>
+          ) : chats.length === 0 ? (
+            <p className="text-xs text-slate-500 text-center py-4">No conversations yet.</p>
+          ) : (
+            chats.map(chat => (
+              <button
+                key={chat.id}
+                onClick={() => loadChat(chat.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 group",
+                  chatId === chat.id
+                    ? "bg-indigo-50 text-indigo-700 font-medium"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
+              >
+                <MessageSquare className={cn(
+                  "w-4 h-4 shrink-0",
+                  chatId === chat.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"
+                )} />
+                <span className="truncate">{chat.title}</span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-indigo-100">
+              <Bot className="text-white w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">Gemini Assistant</h1>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                  {activeConversation ? activeConversation.title : 'Online & Ready to Help'}
+                </span>
               </div>
             </div>
           </div>
-        ))}
-        {isTyping && (
-          <div className="flex gap-4 animate-pulse">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-indigo-400" />
-            </div>
-            <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl rounded-tl-none flex gap-1">
-              <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />
-              <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]" />
-              <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]" />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 bg-slate-50 border border-slate-200 rounded-b-2xl shadow-inner">
-        <div className="relative group">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Type your message here... (Shift+Enter for new line)"
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 pr-32 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none h-24 shadow-sm"
-          />
-          <div className="absolute right-3 bottom-3 flex items-center gap-2">
-            <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100">
-              <Paperclip className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className="bg-indigo-600 text-white p-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-100"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => setMessages([messages[0]])}
+            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+            title="Clear Conversation"
+          >
+            <RotateCcw className="w-5 h-5" />
+          </button>
         </div>
-        <div className="mt-4 flex items-center justify-center gap-6">
-          <button
-            onClick={() => setInput(BUG_TEMPLATE)}
-            className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
-          >
-            <Zap className="w-3 h-3 group-hover:animate-pulse" />
-            Analyze Error
-          </button>
-          <div className="w-1 h-1 bg-slate-300 rounded-full" />
-          <button
-            onClick={() => setInput(STRATEGY_TEMPLATE)}
-            className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
-          >
-            <Sparkles className="w-3 h-3 group-hover:animate-pulse" />
-            Suggest Strategy
-          </button>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"
+        >
+          {isLoading && messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            </div>
+          ) : (
+            messages.map((msg, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex gap-4 animate-in slide-in-from-bottom-2 duration-300",
+                  msg.role === 'user' ? "flex-row-reverse" : ""
+                )}
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                  msg.role === 'assistant' ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-600"
+                )}>
+                  {msg.role === 'assistant' ? <Sparkles className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                </div>
+                <div className={cn(
+                  "max-w-[80%] space-y-2",
+                  msg.role === 'user' ? "items-end" : ""
+                )}>
+                  <div className={cn(
+                    "p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
+                    msg.role === 'assistant'
+                      ? "bg-slate-50 text-slate-700 rounded-tl-none border border-slate-100"
+                      : "bg-indigo-600 text-white rounded-tr-none"
+                  )}>
+                    {msg.content}
+                  </div>
+                  <div className={cn(
+                    "flex items-center gap-3 px-1",
+                    msg.role === 'user' ? "flex-row-reverse" : ""
+                  )}>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">{msg.time}</span>
+                    {msg.role === 'assistant' && (
+                      <div className="flex items-center gap-2">
+                        <button className="text-slate-300 hover:text-indigo-500 transition-colors"><ThumbsUp className="w-3 h-3" /></button>
+                        <button className="text-slate-300 hover:text-red-500 transition-colors"><ThumbsDown className="w-3 h-3" /></button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          {isTyping && (
+            <div className="flex gap-4 animate-pulse">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl rounded-tl-none flex gap-1">
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" />
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+                <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce [animation-delay:0.4s]" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 bg-slate-50 border-t border-slate-200">
+          <div className="relative group">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+              placeholder="Type your message here... (Shift+Enter for new line)"
+              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-4 pr-32 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-none h-24 shadow-sm"
+            />
+            <div className="absolute right-3 bottom-3 flex items-center gap-2">
+              <button className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-100">
+                <Paperclip className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+                className="bg-indigo-600 text-white p-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-100"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-center gap-6">
+            <button
+              onClick={() => setInput(BUG_TEMPLATE)}
+              className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
+            >
+              <Zap className="w-3 h-3 group-hover:animate-pulse" />
+              Analyze Error
+            </button>
+            <div className="w-1 h-1 bg-slate-300 rounded-full" />
+            <button
+              onClick={() => setInput(STRATEGY_TEMPLATE)}
+              className="flex items-center gap-2 text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest group"
+            >
+              <Sparkles className="w-3 h-3 group-hover:animate-pulse" />
+              Suggest Strategy
+            </button>
+          </div>
         </div>
       </div>
     </div>
