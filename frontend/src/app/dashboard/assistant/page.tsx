@@ -161,50 +161,7 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-160px)] max-w-6xl mx-auto animate-in fade-in duration-500">
-      {/* Sidebar */}
-      <div className="w-64 bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-4 shadow-sm">
-        <button
-          onClick={handleNewChat}
-          className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 transition-all font-medium text-sm shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          New Chat
-        </button>
-
-        <div className="border-t border-slate-100 my-1" />
-
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">History</h2>
-        
-        <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-          {isLoadingChats ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
-            </div>
-          ) : chats.length === 0 ? (
-            <p className="text-xs text-slate-500 text-center py-4">No conversations yet.</p>
-          ) : (
-            chats.map(chat => (
-              <button
-                key={chat.id}
-                onClick={() => loadChat(chat.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-xl text-sm transition-all flex items-center gap-3 group",
-                  chatId === chat.id
-                    ? "bg-indigo-50 text-indigo-700 font-medium"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                )}
-              >
-                <MessageSquare className={cn(
-                  "w-4 h-4 shrink-0",
-                  chatId === chat.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"
-                )} />
-                <span className="truncate">{chat.title}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+    <div className="flex h-[calc(100vh-160px)] max-w-6xl mx-auto animate-in fade-in duration-500">
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">

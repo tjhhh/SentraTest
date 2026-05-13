@@ -123,6 +123,16 @@ async function explainBug(errorLog, options = {}) {
 }
 
 /**
+ * Generate short text/summary using AI.
+ *
+ * @param {string} prompt - The prompt for generation
+ * @returns {Promise<string>}
+ */
+async function generateText(prompt) {
+  return _callAI(prompt);
+}
+
+/**
  * Chat with the AI assistant in a conversation session.
  *
  * @param {string} chatId - The chat session UUID
@@ -168,6 +178,7 @@ function status() {
 module.exports = {
   generateTestCases,
   explainBug,
+  generateText,
   chat,
   status,
   // Expose sub-modules for advanced usage

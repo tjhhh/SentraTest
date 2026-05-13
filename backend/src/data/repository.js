@@ -290,12 +290,10 @@ async function listExportHistory(userId, limit = 20, offset = 0) {
 // Chat Extras (rename, search)
 // ---------------------------------------------------------------------------
 async function updateChatTitle(chatId, title) {
-  const res = await pool.query(
-    `UPDATE chats SET title = $1, updated_at = now() WHERE id = $2
-     RETURNING id, user_id, title, created_at, updated_at`,
-    [title, chatId]
-  );
-  return res.rows[0] || null;
+  return prisma.conversation.update({
+    where: { id: chatId },
+    data: { title },
+  });
 }
 
 async function searchChatMessages(userId, keyword, limit = 20, offset = 0) {

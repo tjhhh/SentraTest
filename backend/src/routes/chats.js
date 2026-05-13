@@ -133,6 +133,28 @@ router.delete(
   }
 );
 
+// GET /chats/:chatId/messages  – get message history
+router.get(
+  '/:chatId/messages',
+  authMiddleware,
+  [
+    param('chatId').isUUID(),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('offset').optional().isInt({ min: 0 }),
+  ],
+  validate,
+  async (req, res, next) => {
+    try {
+      const chatId = req.params.chatId;
+      const { limit = 100, offset = 0 } = req.query;
+      const messages = await db.listMessagesByChat(chatId, Number(limit), Number(offset));
+      res.json({ data: messages, limit: Number(limit), offset: Number(offset) });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /chats/:chatId/messages  – send message (auto AI reply)
 router.post(
   '/:chatId/messages',
@@ -163,6 +185,22 @@ router.post(
       // For user messages, call AI service for auto-reply
       try {
         const { reply, queuePosition, queueLength } = await aiService.chat(chatId, userId, content);
+        
+        // Auto-generate title if it's still 'New Chat'
+        try {
+          const chat = await db.getChatById(chatId);
+          if (chat && chat.title === 'New Chat') {
+            const titlePrompt = `Generate a short title (max 5 words) for a conversation that starts with this message: "${content}". Return ONLY the title text, no quotes or punctuation.`;
+            const generatedTitle = await aiService.generateText(titlePrompt);
+            if (generatedTitle) {
+              await db.updateChatTitle(chatId, generatedTitle.trim());
+            }
+          }
+        } catch (titleErr) {
+          console.error("Failed to auto-generate title", titleErr);
+          // Don't fail the request if title generation fails
+        }
+
         res.status(201).json({
           data: {
             userMessageId: 'saved',
