@@ -307,4 +307,21 @@ function parsePlaywrightJson(data) {
   return { stats, tests: results };
 }
 
-module.exports = { analyze, script, generateTestScript, runTestScript };
+async function saveTestCase({ userId, conversationId, coverageType, logicCode, uiCode, generatedScript, testTitles }) {
+  return createTestCase({
+    userId,
+    conversationId,
+    type: "WHITEBOX",
+    coverageType,
+    logicCode,
+    uiCode,
+    generatedScript,
+    payload: { testTitles },
+  });
+}
+
+async function saveExecution(data) {
+  return createExecution(data);
+}
+
+module.exports = { analyze, script, generateTestScript, runTestScript, saveTestCase, saveExecution };

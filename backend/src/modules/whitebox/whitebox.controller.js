@@ -30,7 +30,15 @@ async function script(req, res, next) {
 
 async function generate(req, res, next) {
   try {
-    const { logicCode, uiCode, coverageType } = req.body;
+    const { logicCode, uiCode, coverageType, conversationId } = req.body;
+    
+    if (!req.user?.id) {
+      const err = new Error("Authentication required to generate test cases");
+      err.status = 401;
+      return next(err);
+    }
+    
+    const userId = req.user.id;
 
     const data = await service.generateTestScript({
       logicCode,
@@ -38,7 +46,25 @@ async function generate(req, res, next) {
       coverageType,
     });
 
-    return successResponse(res, data);
+    if (data.refusal) {
+      return successResponse(res, data);
+    }
+
+    // Persist or Update TestCase
+    const testCase = await service.saveTestCase({
+      userId,
+      conversationId,
+      coverageType: coverageType.toUpperCase(),
+      logicCode,
+      uiCode,
+      generatedScript: data.script,
+      testTitles: data.testTitles,
+    });
+
+    return successResponse(res, {
+      ...data,
+      testCaseId: testCase.id,
+    });
   } catch (error) {
     return next(error);
   }
@@ -46,6 +72,7 @@ async function generate(req, res, next) {
 
 async function run(req, res, next) {
   try {
+    const { testCaseId } = req.body;
     const screenshotsDir = path.join(__dirname, "../../screenshots");
 
     // Ensure screenshots directory exists
@@ -60,6 +87,17 @@ async function run(req, res, next) {
     const result = await service.runTestScript(screenshotsDir, (chunk) => {
       res.write(chunk);
     });
+
+    // Persist Execution if testCaseId is provided
+    if (testCaseId && result.results) {
+      await service.saveExecution({
+        testCaseId,
+        stats: result.results.stats,
+        results: result.results.tests,
+        screenshots: result.screenshots,
+        exitCode: result.exitCode,
+      });
+    }
 
     // Send screenshots log marker for frontend gallery
     if (result.screenshots && result.screenshots.length > 0) {

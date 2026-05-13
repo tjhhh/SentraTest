@@ -17,6 +17,8 @@ import { TestTimeline } from '@/components/TestTimeline';
 import { EvidenceGallery } from '@/components/EvidenceGallery';
 import TestResults, { TestStats, TestResult } from '@/components/TestResults';
 
+import { useAuthStore } from '@/store/authStore';
+
 const coverageTypes = [
   { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
   { id: 'branch', name: 'Branch Coverage', description: 'Tests all possible paths through conditional branches.' },
@@ -30,6 +32,17 @@ interface TestStep {
 }
 
 export default function WhiteboxPage() {
+  const token = useAuthStore((state) => state.token);
+  const apiBaseRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const apiBase = apiBaseRaw.replace(/\/+$/, '');
+  const buildApiUrl = (path: string) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (apiBase.endsWith('/api')) {
+      return `${apiBase}${normalizedPath}`;
+    }
+    return `${apiBase}/api${normalizedPath}`;
+  };
+
   const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {
     if (type === 'VIP') {
@@ -48,6 +61,7 @@ export default function WhiteboxPage() {
   const [steps, setSteps] = useState<TestStep[]>([]);
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [testResults, setTestResults] = useState<{ stats: TestStats; tests: TestResult[] } | null>(null);
+  const [testCaseId, setTestCaseId] = useState<string | null>(null);
   const [refusalMessage, setRefusalMessage] = useState<string | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
@@ -75,30 +89,41 @@ export default function WhiteboxPage() {
     setSteps([]);
     setScreenshots([]);
     setTestResults(null);
+    setTestCaseId(null);
     setRefusalMessage(null);
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wb/generate`, {
+      if (!token) {
+        throw new Error('Please login to generate tests');
+      }
+      const response = await fetch(buildApiUrl('/wb/generate'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ logicCode, uiCode, coverageType: selectedCoverage }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})); 
-        throw new Error(errorData.error || 'Failed to generate script');
+        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to generate script');
       }
 
-      const envelope = await response.json();
-      const data = envelope.data || envelope;
-
+      const payload = await response.json();
+      const data = payload?.data || payload;
+      
       if (data.refusal) {
         setRefusalMessage(data.refusal);
         setOutput(prev => [...prev, `[REFUSAL] ${data.refusal}`]);
         return;
       }
-      
+
+      if (data.testCaseId) {
+        setTestCaseId(data.testCaseId);
+      }
+
       if (data.testTitles) {
         setTestResults({
           stats: { total: data.testTitles.length, passed: 0, failed: 0, skipped: 0, duration: 0 },
@@ -123,8 +148,13 @@ export default function WhiteboxPage() {
     setOutput(['> Starting Playwright Runner...']);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/wb/run`, {
+      const response = await fetch(buildApiUrl('/wb/run'), {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ testCaseId })
       });
 
       if (!response.ok) throw new Error('Failed to run tests');
@@ -226,7 +256,7 @@ export default function WhiteboxPage() {
           </button>
           <button
             onClick={handleRun}
-            disabled={isRunning || output.length <= 2}
+            disabled={isRunning || !testCaseId}
             className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}

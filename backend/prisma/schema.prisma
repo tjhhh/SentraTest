@@ -81,18 +81,35 @@ model Message {
 }
 
 model TestCase {
-  id             String        @id @default(uuid())
-  userId         String
-  conversationId String?
-  type           String
-  coverageType   CoverageType?
-  payload        Json
-  createdAt      DateTime      @default(now())
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  id              String        @id @default(uuid())
+  userId          String
+  conversationId  String?
+  type            String
+  coverageType    CoverageType?
+  logicCode       String?
+  uiCode          String?
+  generatedScript String?
+  payload         Json
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation    Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  executions      Execution[]
 
   @@index([userId])
   @@index([conversationId])
+}
+
+model Execution {
+  id          String   @id @default(uuid())
+  testCaseId  String
+  stats       Json
+  results     Json
+  screenshots Json
+  exitCode    Int
+  createdAt   DateTime @default(now())
+  testCase    TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+
+  @@index([testCaseId])
 }
 
 model Export {

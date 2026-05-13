@@ -8,11 +8,9 @@ const { analyzeSchema, scriptSchema } = require("./whitebox.schema");
 
 const router = express.Router();
 
-// Public endpoints (no auth required for testing)
-router.post("/generate", generationLimiter, generate);
-router.post("/run", generationLimiter, run);
-
 // Protected endpoints (require auth)
+router.post("/generate", authMiddleware, generationLimiter, generate);
+router.post("/run", authMiddleware, generationLimiter, run);
 router.post("/analyze", authMiddleware, generationLimiter, validate(analyzeSchema), analyze);
 router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema), script);
 
