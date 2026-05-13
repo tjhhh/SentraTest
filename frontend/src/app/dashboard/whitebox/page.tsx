@@ -19,6 +19,8 @@ import TestResults, { TestStats, TestResult } from '@/components/TestResults';
 
 import { useAuthStore } from '@/store/authStore';
 
+import { buildApiUrl } from '@/config/api';
+
 const coverageTypes = [
   { id: 'statement', name: 'Statement Coverage', description: 'Ensures every line of code is executed.' },
   { id: 'branch', name: 'Branch Coverage', description: 'Tests all possible paths through conditional branches.' },
@@ -33,15 +35,6 @@ interface TestStep {
 
 export default function WhiteboxPage() {
   const token = useAuthStore((state) => state.token);
-  const apiBaseRaw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const apiBase = apiBaseRaw.replace(/\/+$/, '');
-  const buildApiUrl = (path: string) => {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    if (apiBase.endsWith('/api')) {
-      return `${apiBase}${normalizedPath}`;
-    }
-    return `${apiBase}/api${normalizedPath}`;
-  };
 
   const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {

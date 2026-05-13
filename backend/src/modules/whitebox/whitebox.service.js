@@ -1,7 +1,7 @@
 const { buildPrompt } = require("../../services/ai/promptOrchestrator.service");
 const { generateText } = require("../../services/ai/gemini.service");
 const { parseJsonSafe, normalizeGenerationOutput } = require("../../services/ai/outputParser.service");
-const { createTestCase } = require("./whitebox.repository");
+const { createTestCase, createExecution } = require("./whitebox.repository");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");

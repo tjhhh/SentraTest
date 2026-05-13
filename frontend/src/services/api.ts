@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import { buildApiUrl } from "@/config/api";
 
 type FetchOptions = RequestInit & {
   body?: any;
@@ -38,7 +38,7 @@ export async function apiFetch<T>(endpoint: string, options: FetchOptions = {}):
   }
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const response = await fetch(buildApiUrl(endpoint), config);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

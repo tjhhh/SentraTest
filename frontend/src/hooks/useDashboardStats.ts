@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { buildApiUrl } from '@/config/api';
 
 export function useDashboardStats() {
   const [stats, setStats] = useState<any>(null);
@@ -23,8 +22,8 @@ export function useDashboardStats() {
         };
 
         const [statsRes, recentRes] = await Promise.all([
-          fetch(`${API_URL}/api/system/stats`, { headers }),
-          fetch(`${API_URL}/api/system/recent`, { headers })
+          fetch(buildApiUrl('/system/stats'), { headers }),
+          fetch(buildApiUrl('/system/recent'), { headers })
         ]);
 
         if (!statsRes.ok || !recentRes.ok) {

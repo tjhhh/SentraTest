@@ -1,6 +1,5 @@
 import { api } from "./api";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import { buildApiUrl } from "@/config/api";
 
 export const chatService = {
   send: (conversationId: string, message: string) => 
@@ -19,7 +18,7 @@ export const chatService = {
       }
     }
 
-    const response = await fetch(`${API_URL}/chat`, {
+    const response = await fetch(buildApiUrl("/chat"), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
