@@ -49,40 +49,42 @@ async function generateTestScript({ logicCode, uiCode, coverageType, requestId =
     Analyze the following JavaScript logic and UI code. 
     Generate a Playwright test script (.spec.js) that interacts with the UI and achieves ${coverageType} coverage of the logic.
 
-    The test script will run against a file named 'sandbox.html' which contains both the logic and the UI.
-    Use 'await page.goto('file://' + path.join(__dirname, 'sandbox.html'))' to load the page.
-
+    CONTEXT & VALIDATION:
+    1. The test runs against 'sandbox.html' (contains logic + UI). Load it via: 'await page.goto('file://' + path.join(__dirname, 'sandbox.html'))'.
+    2. CONNECTION CHECK: Before generating, check if the provided Logic and UI code are related (e.g., share IDs, classes, or functional purpose).
+    3. REFUSAL RULE: If they are completely unrelated, DO NOT generate a script. Instead, return a JSON with a "refusal" field explaining why.
+    
     CRITICAL INSTRUCTIONS:
-    1. For every major interaction (click, type, etc.), console.log a step marker like: console.log('[STEP: CLICK] clicking button#calculate-btn');
-    2. IMPORTANT for <input type="number">: 
-       - To enter valid numbers, use page.fill(selector, value).
-       - To test invalid non-numeric characters (like 'abc') on a type="number" field, use page.pressSequentially(selector, value) or page.type(selector, value) instead of fill(), as fill() is blocked by browsers for non-numeric values on these fields.
-    3. At the end of each test case, take a screenshot and save it to the shared screenshots directory: await page.screenshot({ path: path.join(__dirname, '../../screenshots', 'result-' + Date.now() + '.png') });
-    4. The screenshot filename MUST start with 'result-' and end with '.png'.
-    5. Make sure to import 'path' in the test script.
-    6. Ensure each [STEP: ...] log is printed on a NEW LINE to ensure correct frontend parsing.
+    1. STEP LOGGING: For EVERY interaction, console.log a marker on a NEW LINE: console.log('[STEP: CLICK] clicking button#calc-btn').
+    2. INPUT HANDLING (type="number"):
+       - Use page.fill(selector, value) for valid numeric input.
+       - Use page.type(selector, value) for testing invalid/non-numeric characters (Avoid pressSequentially to ensure compatibility).
+    3. SCREENSHOTS: 
+       - Take a screenshot at the end of EACH test case.
+       - Path: path.join(__dirname, '../../screenshots', 'result-' + Date.now() + '.png')
+       - Filename MUST start with 'result-' and end with '.png'.
+    4. IMPORTS: You MUST include: const { test, expect } = require('@playwright/test'); AND const path = require('path');
+    5. SELECTOR STABILITY: Prioritize ID selectors (#id). If not available, use CSS selectors that are least likely to change.
+    6. ASYNC WAIT: Use proper await for all Playwright actions and consider using page.waitForSelector() if the UI updates dynamically.
 
-    Return the result as a JSON object with two keys:
-    - "script": The full Playwright test script code (string).
-    - "testTitles": An array of strings representing the titles/descriptions of each test case generated.
-
-    Example output format:
+    OUTPUT FORMAT:
+    Return ONLY a raw JSON object (no markdown, no backticks, no explanations):
     {
-      "script": "const { test, expect } = require('@playwright/test'); ...",
-      "testTitles": ["Test Case 1: Initial State", "Test Case 2: Discount Calculation"]
+      "script": "const { test, expect } = require('@playwright/test'); ... (empty if refusing)",
+      "testTitles": ["Test Case 1: description", "Test Case 2: description (empty if refusing)"],
+      "refusal": "Optional string explaining why generation was refused. Omit if generating."
     }
 
-    Return ONLY the raw JSON object, without any markdown formatting or explanations.
-
-    Logic Code:
+    LOGIC CODE:
     ${logicCode}
 
-    UI Code:
-    ${uiCode || "<!-- No UI provided -->"}
+    UI CODE:
+    ${uiCode || ""}
   `;
 
   let generatedScript = "";
   let testTitles = [];
+  let refusal = null;
 
   try {
     const ai = await generateText(prompt, requestId);
@@ -100,6 +102,11 @@ async function generateTestScript({ logicCode, uiCode, coverageType, requestId =
       }
 
       const parsed = JSON.parse(textResult);
+
+      if (parsed.refusal) {
+        return { script: "", testTitles: [], refusal: parsed.refusal };
+      }
+
       if (typeof parsed.script !== "string" || !Array.isArray(parsed.testTitles)) {
         throw new Error("Invalid Gemini response format: missing script or testTitles");
       }

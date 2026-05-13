@@ -9,7 +9,8 @@ import {
   Terminal as TerminalIcon,
   Eye,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TestTimeline } from '@/components/TestTimeline';
@@ -57,6 +58,7 @@ export default function WhiteboxPage() {
   const [steps, setSteps] = useState<TestStep[]>([]);
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [testResults, setTestResults] = useState<{ stats: TestStats; tests: TestResult[] } | null>(null);
+  const [refusalMessage, setRefusalMessage] = useState<string | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
   const sandboxSrcDoc = useMemo(() => {
@@ -83,6 +85,7 @@ export default function WhiteboxPage() {
     setSteps([]);
     setScreenshots([]);
     setTestResults(null);
+    setRefusalMessage(null);
     setOutput(['> Analysis starting...', '> Sending logic and UI code to Gemini API...']);
     
     try {
@@ -100,6 +103,12 @@ export default function WhiteboxPage() {
       const payload = await response.json();
       const data = payload?.data || payload;
       
+      if (data.refusal) {
+        setRefusalMessage(data.refusal);
+        setOutput(prev => [...prev, `[REFUSAL] ${data.refusal}`]);
+        return;
+      }
+
       if (data.testTitles) {
         setTestResults({
           stats: { total: data.testTitles.length, passed: 0, failed: 0, skipped: 0, duration: 0 },
@@ -311,6 +320,25 @@ export default function WhiteboxPage() {
           {testResults && (
             <div className="h-[400px]">
               <TestResults results={testResults} />
+            </div>
+          )}
+
+          {refusalMessage && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex gap-4">
+                <div className="bg-amber-100 p-2 rounded-xl h-fit">
+                  <AlertCircle className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-amber-900">Generation Refused</h3>
+                  <p className="text-sm text-amber-800 leading-relaxed">
+                    {refusalMessage}
+                  </p>
+                  <p className="text-xs text-amber-600 mt-2 font-medium">
+                    Tip: Ensure your HTML elements (IDs/classes) match the selectors used in your logic.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
