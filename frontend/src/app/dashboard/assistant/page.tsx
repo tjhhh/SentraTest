@@ -39,8 +39,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingChats, setIsLoadingChats] = useState(false);
-  const activeConversation: { title: string } | null = null;
+  const activeConversation = chats.find(c => c.id === chatId) || null;
   const BUG_TEMPLATE = 'Please describe the bug you would like analyzed.';
   const STRATEGY_TEMPLATE = 'Please suggest a testing strategy for the current scenario.';
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,15 +47,15 @@ export default function AssistantPage() {
   // Fetch chats on mount
   useEffect(() => {
     if (user?.id) {
-      setIsLoadingChats(true);
-      api.get<{ data: Chat[] }>('/chats')
+      setIsLoading(true);
+      api.get<Chat[]>('/chats')
         .then(data => {
           setChats(data);
         })
         .catch(err => {
           console.error("Failed to fetch chats", err);
         })
-        .finally(() => setIsLoadingChats(false));
+        .finally(() => setIsLoading(false));
     }
   }, [user]);
 
@@ -74,8 +73,7 @@ export default function AssistantPage() {
               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }
           ]);
-          // Refresh chats list
-          return api.get<{ data: Chat[] }>(`/chats?userId=${user.id}`);
+          return api.get<Chat[]>('/chats');
         })
         .then(data => {
           if (data) setChats(data);
@@ -140,9 +138,9 @@ export default function AssistantPage() {
   const loadChat = (id: string) => {
     setChatId(id);
     setIsLoading(true);
-    api.get<{ data: any[] }>(`/chats/${id}/messages`)
+    api.get<any[]>(`/chats/${id}/messages`)
       .then(data => {
-        const mappedMessages: Message[] = data.data.map(msg => ({
+        const mappedMessages: Message[] = data.map((msg: any) => ({
           role: msg.role,
           content: msg.content,
           time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
