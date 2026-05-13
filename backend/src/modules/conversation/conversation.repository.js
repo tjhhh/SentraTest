@@ -3,6 +3,17 @@ const { prisma } = require("../../config/prisma");
 function listConversationsByUser(userId) {
   return prisma.conversation.findMany({
     where: { userId },
+    include: {
+      testCases: {
+        select: {
+          type: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      },
+    },
     orderBy: { updatedAt: "desc" },
   });
 }

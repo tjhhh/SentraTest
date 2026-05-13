@@ -3,7 +3,7 @@ const express = require("express");
 const { authMiddleware } = require("../../middlewares/authMiddleware");
 const { validate } = require("../../middlewares/validate");
 const { generationLimiter } = require("../../middlewares/rateLimiters");
-const { analyze, script, generate, run } = require("./whitebox.controller");
+const { analyze, history, script, generate, run } = require("./whitebox.controller");
 const { analyzeSchema, scriptSchema } = require("./whitebox.schema");
 
 const router = express.Router();
@@ -13,6 +13,27 @@ router.post("/generate", authMiddleware, generationLimiter, generate);
 router.post("/run", authMiddleware, generationLimiter, run);
 router.post("/analyze", authMiddleware, generationLimiter, validate(analyzeSchema), analyze);
 router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema), script);
+router.get("/history/:conversationId", authMiddleware, history);
+
+/**
+ * @openapi
+ * /api/wb/history/{conversationId}:
+ *   get:
+ *     tags: [Whitebox]
+ *     summary: Ambil test case whitebox terakhir dalam percakapan
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Berhasil mengambil history
+ *       404:
+ *         description: History tidak ditemukan
+ */
 
 /**
  * @openapi
@@ -57,6 +78,5 @@ router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema)
  *       200:
  *         description: Script berhasil digenerate
  */
-router.post("/script", authMiddleware, generationLimiter, validate(scriptSchema), script);
 
 module.exports = { whiteboxRoutes: router };

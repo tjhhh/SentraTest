@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Play, 
   Settings, 
@@ -58,6 +58,48 @@ export default function WhiteboxPage() {
   const [refusalMessage, setRefusalMessage] = useState<string | null>(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
 
+  useEffect(() => {
+    async function loadHistory() {
+      await Promise.resolve();
+      // Reset state before loading new conversation
+      setLogicCode(`function calculateDiscount(price, type) {
+  if (price > 100) {
+    if (type === 'VIP') {
+      return price * 0.8;
+    }
+    return price * 0.9;
+  }
+  return price;
+}`);
+      setUiCode(`<button id="calculate-btn">Calculate</button>\n<div id="result"></div>`);
+      setSelectedCoverage('branch');
+      setOutput([]);
+      setSteps([]);
+      setScreenshots([]);
+      setTestResults(null);
+
+      if (!activeConversation) return;
+
+      try {
+        setIsProcessing(true);
+        const history = await wbService.getHistory(activeConversation.id);
+        if (history && history.payload) {
+          if (history.payload.logicCode) setLogicCode(history.payload.logicCode);
+          if (history.payload.uiCode) setUiCode(history.payload.uiCode);
+          if (history.coverageType) setSelectedCoverage(history.coverageType.toLowerCase());
+          
+          setOutput(['> Loaded previous session data.']);
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+
+    loadHistory();
+  }, [activeConversation]);
+
   const sandboxSrcDoc = useMemo(() => {
     return `
       <!DOCTYPE html>
@@ -101,7 +143,7 @@ export default function WhiteboxPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})); 
-        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to generate script');
+        throw new Error(errorData.error || 'Failed to generate script');
       }
 
       const payload = await response.json();
@@ -141,7 +183,7 @@ export default function WhiteboxPage() {
     setOutput(['> Starting Playwright Runner...']);
     
     try {
-      const response = await fetch(buildApiUrl('/wb/run'), {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}/api/whitebox/run`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

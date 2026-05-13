@@ -66,7 +66,7 @@ export function Sidebar({ isOpen, onClose }: Readonly<SidebarProps>) {
   }, [fetchConversations]);
 
   useEffect(() => {
-    setIsMounted(true);
+    setTimeout(() => setIsMounted(true), 0);
     return () => setIsMounted(false);
   }, []);
 
@@ -78,6 +78,7 @@ export function Sidebar({ isOpen, onClose }: Readonly<SidebarProps>) {
   const handleCreate = async () => {
     try {
       await createConversation('New Conversation');
+      router.push('/dashboard/assistant');
     } catch (err) {
       console.error('Failed to create conversation', err);
     }
@@ -111,6 +112,20 @@ export function Sidebar({ isOpen, onClose }: Readonly<SidebarProps>) {
     setEditingId(conversation.id);
     setEditTitle(conversation.title);
     setMenuOpenId(null);
+  };
+
+  const handleConversationClick = (conv: Conversation) => {
+    setActiveConversation(conv);
+    
+    const latestTestCase = conv.testCases?.[0];
+    
+    if (latestTestCase?.type === 'WHITEBOX') {
+      router.push('/dashboard/whitebox');
+    } else if (latestTestCase?.type.startsWith('BLACKBOX_')) {
+      router.push('/dashboard/blackbox');
+    } else {
+      router.push('/dashboard/assistant');
+    }
   };
 
   const handleConfirmLogout = async () => {
@@ -257,7 +272,7 @@ export function Sidebar({ isOpen, onClose }: Readonly<SidebarProps>) {
                   </div>
                 ) : (
                   <div 
-                    onClick={() => setActiveConversation(conv)}
+                    onClick={() => handleConversationClick(conv)}
                     className={cn(
                       "flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all",
                       activeConversation?.id === conv.id 

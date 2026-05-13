@@ -22,18 +22,42 @@ function mockRes() {
 
 describe("Generator controllers", () => {
   it("blackbox generate should return success", async () => {
-    bbService.generate.mockResolvedValue({});
-    const req = { user: { id: "u1" }, body: { method: "BVA", requirement: "x" } };
+    const mockOutput = { mode: "blackbox", content: {}, requirement: "test requirement" };
+    bbService.generate.mockResolvedValue(mockOutput);
+    const req = { 
+      user: { id: "u1" }, 
+      body: { 
+        method: "BVA", 
+        requirement: "test requirement",
+        conversationId: "conv-1"
+      } 
+    };
     const res = mockRes();
     await bbController.generate(req, res, jest.fn());
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: mockOutput
+    });
   });
 
   it("whitebox analyze should return success", async () => {
-    wbService.analyze.mockResolvedValue({});
-    const req = { user: { id: "u1" }, body: { coverageType: "BRANCH", sourceCode: "if(true){}" } };
+    const mockOutput = { mode: "whitebox", content: {}, logicCode: "if(true){}", uiCode: "<div></div>" };
+    wbService.analyze.mockResolvedValue(mockOutput);
+    const req = { 
+      user: { id: "u1" }, 
+      body: { 
+        coverageType: "BRANCH", 
+        sourceCode: "if(true){}",
+        uiCode: "<div></div>"
+      } 
+    };
     const res = mockRes();
     await wbController.analyze(req, res, jest.fn());
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: mockOutput
+    });
   });
 });

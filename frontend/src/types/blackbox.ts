@@ -1,5 +1,5 @@
 export type BBMethod = "BVA" | "EQP" | "DT";
-export type ExportFormat = "PDF" | "DOCX" | "JSON" | "ZIP";
+export type ExportFormat = "PDF" | "DOCX" | "JSON" | "ZIP" | "XLSX";
 
 export interface BBGenerateParams {
   conversationId?: string;
@@ -9,6 +9,7 @@ export interface BBGenerateParams {
 
 export interface BBScriptParams {
   conversationId?: string;
+  method: BBMethod;
   testCases: any[];
 }
 
