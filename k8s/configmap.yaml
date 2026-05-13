@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sentra-config
+  namespace: blind-spot
+data:
+  db-host: "103.185.52.138"
+  db-port: "1185"
+  db-name: "blind_spot"
+  db-user: "blind_spot"
+  gemini-model: "gemini-2.5-flash"
+  next-public-api-url: "https://blind-spot.hackathon.sev-2.com/api"

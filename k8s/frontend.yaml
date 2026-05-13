@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentra-frontend
+  namespace: blind-spot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentra-frontend
+  template:
+    metadata:
+      labels:
+        app: sentra-frontend
+    spec:
+      containers:
+      - name: sentra-frontend
+        image: praktikan/sentra-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: sentra-config
+              key: next-public-api-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentra-frontend
+  namespace: blind-spot
+spec:
+  selector:
+    app: sentra-frontend
+  ports:
+  - protocol: TCP
+    port: 3000
+    targetPort: 3000
