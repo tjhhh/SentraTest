@@ -1,4 +1,4 @@
-# Domain: Black Box Generator
+# Domain: Black-Box Test Case Generator
 
 ## Requirements
 

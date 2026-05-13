@@ -1,4 +1,4 @@
-# Domain: White Box Generator
+# Domain: White-Box Test Case Generator
 
 ## 1. Requirements
 

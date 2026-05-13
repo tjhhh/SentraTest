@@ -8,6 +8,7 @@ const { blackboxRoutes } = require("../modules/blackbox/blackbox.routes");
 const { whiteboxRoutes } = require("../modules/whitebox/whitebox.routes");
 const { bugRoutes } = require("../modules/bug/bug.routes");
 const { exportRoutes } = require("../modules/export/export.routes");
+const chatsRouter = require("./chats");
 const { systemRoutes } = require("../modules/system/system.routes");
 
 const router = express.Router();
@@ -22,8 +23,10 @@ router.use("/messages", messageRoutes);
 router.use("/chat", chatRoutes);
 router.use("/bb", blackboxRoutes);
 router.use("/wb", whiteboxRoutes);
+router.use("/whitebox", whiteboxRoutes);
 router.use("/bug", bugRoutes);
 router.use("/export", exportRoutes);
 router.use("/system", systemRoutes);
+router.use("/chats", chatsRouter);
 
 module.exports = { apiRouter: router };
