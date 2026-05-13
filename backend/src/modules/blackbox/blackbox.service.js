@@ -48,7 +48,7 @@ async function generateScript({ method, testCases }) {
     const testName = (tc.description || tc.scenario || `Test Case ${index + 1}`)
       .replace(/'/g, "\\'")
       .substring(0, 100);
-    
+
     const inputs = typeof tc.inputs === 'object' ? tc.inputs : {};
     const expectedOutput = tc.expectedOutput || tc.expectedResult || '';
 

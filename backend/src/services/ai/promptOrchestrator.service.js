@@ -133,7 +133,7 @@ function buildPrompt({ mode, input, context = [], method }) {
     : "Context messages: none";
 
   const methodConfig = methodSpecificInstructions[method];
-  const methodBlock = methodConfig 
+  const methodBlock = methodConfig
     ? `${methodConfig.instructions}`
     : `Method: ${method || "default"}\nApply best practices for the selected testing method.`;
 
