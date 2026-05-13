@@ -57,8 +57,9 @@ export default function BlackboxPage() {
             const loadedResults = history.payload.content.testCases.map((tc: any, index: number) => ({
               id: index + 1,
               case: tc.description || tc.scenario || `Test Case ${index + 1}`,
-              input: typeof tc.inputs === 'object' ? JSON.stringify(tc.inputs) : (tc.input || JSON.stringify(tc)),
+              input: typeof tc.inputs === 'object' ? JSON.stringify(tc.inputs, null, 2) : (tc.input || '-'),
               expected: tc.expectedOutput || tc.expectedResult || 'Expected Result',
+              notes: tc.notes || '',
               status: 'Loaded'
             }));
             setResults(loadedResults);
@@ -76,21 +77,78 @@ export default function BlackboxPage() {
     loadHistory();
   }, [activeConversation]);
 
-  const handleGenerate = () => {
+  const parseTestCases = (content: any) => {
+    // If testCases is already an array, use it directly
+    if (Array.isArray(content.testCases)) {
+      return content.testCases.map((tc: any, index: number) => ({
+        id: index + 1,
+        case: tc.description || tc.scenario || `Test Case ${index + 1}`,
+        input: typeof tc.inputs === 'object' ? JSON.stringify(tc.inputs, null, 2) : (tc.input || '-'),
+        expected: tc.expectedOutput || tc.expectedResult || 'Expected Result',
+        notes: tc.notes || '',
+        status: 'Generated',
+      }));
+    }
+
+    // Fallback: try to extract from raw text
+    if (content.raw && typeof content.raw === 'string') {
+      try {
+        const parsed = JSON.parse(content.raw);
+        if (Array.isArray(parsed.testCases)) {
+          return parsed.testCases.map((tc: any, index: number) => ({
+            id: index + 1,
+            case: tc.description || tc.scenario || `Test Case ${index + 1}`,
+            input: typeof tc.inputs === 'object' ? JSON.stringify(tc.inputs, null, 2) : (tc.input || '-'),
+            expected: tc.expectedOutput || tc.expectedResult || 'Expected Result',
+            notes: tc.notes || '',
+            status: 'Generated',
+          }));
+        }
+      } catch (e) {
+        // Continue to display raw response
+        return [{
+          id: 1,
+          case: "AI Response",
+          input: "-",
+          expected: content.raw.substring(0, 500) + (content.raw.length > 500 ? '...' : ''),
+          notes: content.note || 'Raw response from AI',
+          status: 'Raw',
+        }];
+      }
+    }
+
+    // Last resort: show error message
+    return [{
+      id: 1,
+      case: "Format Error",
+      input: "-",
+      expected: content.note || "Response format tidak sesuai. Silakan coba lagi.",
+      notes: '',
+      status: 'Error',
+    }];
+  };
+
+  const handleGenerate = async () => {
     if (!requirement) return;
     setIsGenerating(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const mockResults = [
-        { id: 1, case: 'Minimum value minus 1', input: '0', expected: 'Error: Out of range', status: 'Generated' },
-        { id: 2, case: 'Minimum value', input: '1', expected: 'Success', status: 'Generated' },
-        { id: 3, case: 'Maximum value', input: '100', expected: 'Success', status: 'Generated' },
-        { id: 4, case: 'Maximum value plus 1', input: '101', expected: 'Error: Out of range', status: 'Generated' },
-      ];
-      setResults(mockResults);
+
+    try {
+      const response = await bbService.generate({
+        requirement,
+        method: selectedMethod.toUpperCase() as any,
+        conversationId: activeConversation?.id || undefined,
+      });
+
+      if (response && response.content) {
+        const mappedResults = parseTestCases(response.content);
+        setResults(mappedResults);
+      }
+    } catch (error) {
+      console.error("Failed to generate test cases:", error);
+      alert("Failed to generate test cases. Please try again.");
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -156,24 +214,45 @@ export default function BlackboxPage() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider sticky top-0">
                     <tr>
-                      <th className="px-6 py-4 font-semibold">Test Case</th>
-                      <th className="px-6 py-4 font-semibold">Mock Input</th>
-                      <th className="px-6 py-4 font-semibold">Expected</th>
-                      <th className="px-6 py-4 font-semibold">Status</th>
+                      <th className="px-6 py-4 font-semibold min-w-max">Test Case</th>
+                      <th className="px-6 py-4 font-semibold min-w-80">Mock Input</th>
+                      <th className="px-6 py-4 font-semibold min-w-80">Expected</th>
+                      <th className="px-6 py-4 font-semibold min-w-40">Notes</th>
+                      <th className="px-6 py-4 font-semibold min-w-max">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {results.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                         <td className="px-6 py-4 text-sm text-slate-700 font-medium">{item.case}</td>
-                        <td className="px-6 py-4 text-sm font-mono text-indigo-600">{item.input}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600">{item.expected}</td>
+                        <td className="px-6 py-4 text-xs font-mono text-indigo-600 bg-slate-50 rounded whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                          {item.input}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-600 break-words max-h-40 overflow-y-auto">
+                          {item.expected}
+                        </td>
+                        <td className="px-6 py-4 text-xs text-slate-500">
+                          {item.notes || '-'}
+                        </td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
-                            <CheckCircle2 className="w-3 h-3" />
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap",
+                            item.status === 'Error'
+                              ? "text-red-700 bg-red-50"
+                              : item.status === 'Raw'
+                                ? "text-amber-700 bg-amber-50"
+                                : "text-green-700 bg-green-50"
+                          )}>
+                            {item.status === 'Error' ? (
+                              <AlertCircle className="w-3 h-3" />
+                            ) : item.status === 'Raw' ? (
+                              <AlertCircle className="w-3 h-3" />
+                            ) : (
+                              <CheckCircle2 className="w-3 h-3" />
+                            )}
                             {item.status}
                           </span>
                         </td>
