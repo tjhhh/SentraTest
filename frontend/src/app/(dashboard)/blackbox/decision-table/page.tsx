@@ -17,7 +17,7 @@ export default function DecisionTablePage() {
     setDtData(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/decision-table', {
+      const response = await fetch('http://localhost:3001/api/decision-table/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,7 +28,8 @@ export default function DecisionTablePage() {
       const result = await parseApiResponse(response);
       
       if (result.success) {
-        setDtData(result.data);
+        const finalData = result.data.decisionTable || result.data;
+        setDtData(finalData);
       } else {
         throw new Error(result.message || 'Generation failed');
       }

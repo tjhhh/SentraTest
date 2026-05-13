@@ -1,70 +1,51 @@
-const { pool } = require("../db");
-const { randomUUID } = require("crypto");
+const prisma = require("../lib/prisma");
 
 async function saveBVATestCases(userId, requirementText, testCases) {
-  const id = randomUUID();
-  const result = await pool.query(
-    `INSERT INTO bva_test_cases (id, user_id, requirement_text, test_cases) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [id, userId, requirementText, JSON.stringify(testCases)]
-  );
+  const result = await prisma.bvaTestCase.create({
+    data: {
+      userId,
+      requirementText,
+      testCases,
+    },
+  });
 
-  return {
-    ...result.rows[0],
-    testCases,
-  };
+  return result;
 }
 
 async function getBVAHistory(userId, limit = 10) {
-  const params = [];
-  let query = `SELECT * FROM bva_test_cases`;
+  const result = await prisma.bvaTestCase.findMany({
+    where: userId ? { userId } : {},
+    take: limit,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
-  if (userId) {
-    params.push(userId);
-    query += ` WHERE user_id = $${params.length}`;
-  }
-
-  params.push(limit);
-  query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
-
-  const result = await pool.query(query, params);
-
-  return result.rows.map((row) => ({
-    ...row,
-    testCases: row.test_cases,
-  }));
+  return result;
 }
 
 async function saveDecisionTable(userId, requirementText, decisionTable) {
-  const id = randomUUID();
-  const result = await pool.query(
-    `INSERT INTO decision_table_cases (id, user_id, requirement_text, decision_table) VALUES ($1, $2, $3, $4) RETURNING *`,
-    [id, userId, requirementText, JSON.stringify(decisionTable)]
-  );
+  const result = await prisma.decisionTableCase.create({
+    data: {
+      userId,
+      requirementText,
+      decisionTable,
+    },
+  });
 
-  return {
-    ...result.rows[0],
-    decisionTable: result.rows[0].decision_table,
-  };
+  return result;
 }
 
 async function getDecisionTableHistory(userId, limit = 10) {
-  const params = [];
-  let query = `SELECT * FROM decision_table_cases`;
+  const result = await prisma.decisionTableCase.findMany({
+    where: userId ? { userId } : {},
+    take: limit,
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
-  if (userId) {
-    params.push(userId);
-    query += ` WHERE user_id = $${params.length}`;
-  }
-
-  params.push(limit);
-  query += ` ORDER BY created_at DESC LIMIT $${params.length}`;
-
-  const result = await pool.query(query, params);
-
-  return result.rows.map((row) => ({
-    ...row,
-    decisionTable: row.decision_table,
-  }));
+  return result;
 }
 
 module.exports = {

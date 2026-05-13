@@ -13,22 +13,57 @@ function getDbErrorMessage(error) {
 }
 
 /**
- * POST /api/dt
+ * POST /api/decision-table/generate
  * Generate Decision Table from requirement text
  */
-router.post("/", async (req, res) => {
+router.post("/generate", async (req, res) => {
   try {
-    const { requirement } = req.body;
+    const { requirement, requirementText } = req.body;
+    const finalRequirement = requirementText || requirement;
 
-    if (!requirement || requirement.length < 50 || requirement.length > 2000) {
+    if (!finalRequirement || finalRequirement.length < 50 || finalRequirement.length > 2000) {
       return res.status(400).json({
         success: false,
         message: "Requirement must be between 50 and 2000 characters",
       });
     }
 
-    const data = await generateDecisionTable(requirement);
-    await saveDecisionTable(null, requirement, data);
+    const data = await generateDecisionTable(finalRequirement);
+    await saveDecisionTable(null, finalRequirement, data);
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("Decision Table Generation Error:", error);
+    const dbMessage = getDbErrorMessage(error);
+    res.status(500).json({
+      success: false,
+      message: dbMessage || "Failed to generate Decision Table",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * POST /api/dt
+ * Generate Decision Table from requirement text (Supporting base route)
+ */
+router.post("/", async (req, res) => {
+  try {
+    const { requirement, requirementText } = req.body;
+    const finalRequirement = requirementText || requirement;
+
+    if (!finalRequirement || finalRequirement.length < 50 || finalRequirement.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: "Requirement must be between 50 and 2000 characters",
+      });
+    }
+
+    const data = await generateDecisionTable(finalRequirement);
+    await saveDecisionTable(null, finalRequirement, data);
 
     res.json({
       success: true,

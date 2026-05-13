@@ -11,9 +11,11 @@ import {
   AlertCircle,
   Sparkles,
   Loader,
+  Table,
 } from 'lucide-react';
 import { cn, parseApiResponse } from '@/lib/utils';
 import TestCasesTable from '@/components/blackbox/TestCasesTable';
+import DecisionTableDisplay from '@/components/blackbox/DecisionTableDisplay';
 
 const testMethods = [
   { id: 'bva', name: 'Boundary Value Analysis (BVA)', description: 'Focuses on values at the boundaries of input domains.' },
@@ -27,6 +29,7 @@ export default function BlackboxPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
+  const [dtResults, setDtResults] = useState<any>(null);
 
   const handleGenerate = async () => {
     if (!requirement.trim() || requirement.length < 50) {
@@ -34,22 +37,26 @@ export default function BlackboxPage() {
       return;
     }
 
-    if (selectedMethod !== 'bva') {
-      setError(`${selectedMethod.toUpperCase()} is coming soon. Currently only BVA is available.`);
-      return;
-    }
-
     setIsGenerating(true);
     setError(null);
     setResults([]);
+    setDtResults(null);
 
     try {
-      const response = await fetch('http://localhost:3001/api/bva', {
+      const endpoint = selectedMethod === 'dt' 
+        ? 'http://localhost:3001/api/decision-table/generate' 
+        : 'http://localhost:3001/api/bva';
+      
+      const payload = selectedMethod === 'dt'
+        ? { requirementText: requirement }
+        : { requirement };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ requirement }),
+        body: JSON.stringify(payload),
       });
 
       const data = await parseApiResponse(response);
@@ -58,11 +65,13 @@ export default function BlackboxPage() {
         throw new Error(data.message || 'Generation failed');
       }
 
-      if (!Array.isArray(data.data)) {
-        throw new Error('Invalid response format');
+      if (selectedMethod === 'dt') {
+        setDtResults(data.data);
+        // Also set results to something to trigger the "results view"
+        setResults(data.data.testCases || []);
+      } else {
+        setResults(data.data);
       }
-
-      setResults(data.data);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
       console.error('Generation error:', errorMsg);
@@ -159,7 +168,13 @@ export default function BlackboxPage() {
           )}
 
           {/* Results Section */}
-          {results.length > 0 && !isGenerating && !error && (
+          {selectedMethod === 'dt' && dtResults && !isGenerating && !error && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+              <DecisionTableDisplay data={dtResults} isLoading={false} />
+            </div>
+          )}
+
+          {selectedMethod !== 'dt' && results.length > 0 && !isGenerating && !error && (
             <div className="animate-in fade-in slide-in-from-top-4 duration-500">
               <TestCasesTable testCases={results} isLoading={false} requirement={requirement} />
             </div>

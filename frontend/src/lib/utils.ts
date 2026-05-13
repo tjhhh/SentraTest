@@ -11,18 +11,20 @@ export async function parseApiResponse(response: Response) {
   const isJson = contentType.includes('application/json');
 
   if (isJson) {
+    let json;
     try {
-      const json = JSON.parse(text);
-      if (!response.ok) {
-        throw new Error(json?.message || response.statusText || 'Request failed');
-      }
-      return json;
+      json = JSON.parse(text);
     } catch (err) {
       if (text.trim().startsWith('<')) {
         throw new Error('Koneksi Database Gagal');
       }
       throw new Error('Gagal memproses respon server');
     }
+
+    if (!response.ok) {
+      throw new Error(json?.message || response.statusText || 'Request failed');
+    }
+    return json;
   }
 
   if (text.trim().startsWith('<')) {

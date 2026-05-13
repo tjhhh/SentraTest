@@ -1,23 +1,4 @@
-const USE_AI = process.env.USE_AI === "true";
-let aiModel = null;
-
-if (USE_AI) {
-  const { GoogleGenerativeAI } = require("@google/generative-ai");
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  aiModel = genAI.getGenerativeModel({ model: "gemini-1.5" });
-}
-
-function sanitizeJsonString(raw) {
-  const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
-  const firstBracket = Math.min(
-    ...[cleaned.indexOf("{"), cleaned.indexOf("[")].filter((idx) => idx >= 0)
-  );
-  const lastBracket = Math.max(cleaned.lastIndexOf("}"), cleaned.lastIndexOf("]"));
-  if (firstBracket >= 0 && lastBracket > firstBracket) {
-    return cleaned.slice(firstBracket, lastBracket + 1);
-  }
-  return cleaned;
-}
+const { generateText, sanitizeJsonString } = require("./geminiService");
 
 function parseRange(requirementText) {
   const rangeMatch = requirementText.match(/between\s+(\d+)\s*(?:and|to)\s*(\d+)/i);
@@ -176,7 +157,7 @@ function createFallbackBVA(requirementText) {
 }
 
 async function analyzeBoundaryValues(requirementText) {
-  if (!USE_AI) {
+  if (!process.env.GEMINI_API_KEY) {
     return createFallbackBVA(requirementText);
   }
 
@@ -213,37 +194,22 @@ Important:
 - category MUST be one of: "valid", "boundary", "invalid".
 - Return ONLY JSON array.`;
 
-  let retries = 0;
-  const maxRetries = 3;
+  const responseText = await generateText(systemPrompt);
+  const cleanedResponse = sanitizeJsonString(responseText);
+  let testCases = JSON.parse(cleanedResponse);
 
-  while (retries < maxRetries) {
-    try {
-      const result = await aiModel.generateContent(systemPrompt);
-      const responseText = await result.response.text();
-      const cleanedResponse = sanitizeJsonString(responseText);
-      let testCases = JSON.parse(cleanedResponse);
-
-      if (!Array.isArray(testCases)) {
-        testCases = [testCases];
-      }
-
-      return testCases.map((tc, index) => ({
-        id: tc.id || `tc-${String(index + 1).padStart(3, "0")}`,
-        name: tc.name || `Test Case ${index + 1}`,
-        input: tc.input || {},
-        expectedOutput: tc.expectedOutput || "Success",
-        boundaryType: tc.boundaryType || "exact",
-        category: tc.category || "valid",
-      }));
-    } catch (error) {
-      if (retries >= maxRetries - 1) {
-        console.warn("AI generation failed, falling back to local BVA generator:", error);
-        return createFallbackBVA(requirementText);
-      }
-      retries++;
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-    }
+  if (!Array.isArray(testCases)) {
+    testCases = [testCases];
   }
+
+  return testCases.map((tc, index) => ({
+    id: tc.id || `tc-${String(index + 1).padStart(3, "0")}`,
+    name: tc.name || `Test Case ${index + 1}`,
+    input: tc.input || {},
+    expectedOutput: tc.expectedOutput || "Success",
+    boundaryType: tc.boundaryType || "exact",
+    category: tc.category || "valid",
+  }));
 }
 
 module.exports = {

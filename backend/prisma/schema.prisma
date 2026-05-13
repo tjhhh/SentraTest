@@ -6,13 +6,25 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model BvaTestCase {
   id              String   @id @default(uuid())
   requirementText String
-  testCases       String   // Store as JSON string since SQLite doesn't support JSON type
+  testCases       Json
   createdAt       DateTime @default(now())
   userId          String?
+
+  @@map("bva_test_cases")
+}
+
+model DecisionTableCase {
+  id              String   @id @default(uuid())
+  requirementText String
+  decisionTable   Json
+  createdAt       DateTime @default(now())
+  userId          String?
+
+  @@map("decision_table_cases")
 }

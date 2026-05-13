@@ -1,92 +1,73 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const apiKey = process.env.GEMINI_API_KEY?.trim();
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY is not configured");
+}
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
+const genAI = new GoogleGenerativeAI(apiKey);
+const modelCandidates = [
+  process.env.GEMINI_MODEL,
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
+  "gemini-1.5",
+].filter(Boolean);
 
-/**
- * Analyze functional requirement and generate BVA test cases using Gemini API
- * @param {string} requirementText 
- * @returns {Promise<Array>}
- */
-async function analyzeBoundaryValues(requirementText) {
-  const systemPrompt = `You are an expert QA engineer specializing in Boundary Value Analysis (BVA).
-Analyze the following requirement and generate comprehensive BVA test cases.
+function createModel(modelName) {
+  return genAI.getGenerativeModel({
+    model: modelName,
+    temperature: 0.2,
+  });
+}
 
-REQUIREMENT:
-${requirementText}
-
-Generate test cases that cover:
-1. Minimum boundary values (lower boundary)
-2. Maximum boundary values (upper boundary)
-3. Values just below minimum (invalid)
-4. Values just above maximum (invalid)
-5. Typical valid values within range (exact)
-
-Return ONLY a valid JSON array (no other text, no markdown, no code blocks).
-
-Example format:
-[
-  {
-    "id": "tc-001",
-    "name": "Minimum boundary value",
-    "input": {"field": 18},
-    "expectedOutput": "Valid - accepts minimum boundary",
-    "boundaryType": "lower",
-    "category": "boundary"
+function sanitizeJsonString(raw) {
+  const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+  const firstBracket = Math.min(
+    ...[cleaned.indexOf("{"), cleaned.indexOf("[")].filter((idx) => idx >= 0)
+  );
+  const lastBracket = Math.max(cleaned.lastIndexOf("}"), cleaned.lastIndexOf("]"));
+  if (firstBracket >= 0 && lastBracket > firstBracket) {
+    return cleaned.slice(firstBracket, lastBracket + 1);
   }
-]
+  return cleaned;
+}
 
-Important:
-- Generate 8-15 test cases
-- Each test case MUST have all fields: id, name, input (object), expectedOutput, boundaryType, category
-- boundaryType must be one of: lower, upper, exact, or invalid
-- category must be one of: valid, boundary, or invalid
-- Return ONLY JSON array, no markdown markers like \`\`\`json.`;
-
+async function generateText(prompt) {
   let retries = 0;
   const maxRetries = 3;
+  let currentModelIndex = 0;
+  let model = createModel(modelCandidates[currentModelIndex]);
 
   while (retries < maxRetries) {
     try {
-      const result = await model.generateContent(systemPrompt);
+      const currentModelName = modelCandidates[currentModelIndex];
+      console.log(`Using Gemini model: ${currentModelName}`);
+      const result = await model.generateContent(prompt);
       const responseText = await result.response.text();
-
-      console.log("Gemini Raw Response:", responseText);
-
-      // Clean response text in case Gemini adds markdown blocks
-      const cleanedResponse = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-      
-      let testCases = JSON.parse(cleanedResponse);
-
-      if (!Array.isArray(testCases)) {
-        testCases = [testCases];
-      }
-
-      // Validate and format
-      return testCases.map((tc, index) => ({
-        id: tc.id || `tc-${String(index + 1).padStart(3, "0")}`,
-        name: tc.name || `Test Case ${index + 1}`,
-        input: tc.input || {},
-        expectedOutput: tc.expectedOutput || "Success",
-        boundaryType: tc.boundaryType || "exact",
-        category: tc.category || "valid",
-      }));
-
+      return responseText;
     } catch (error) {
       retries++;
-      console.error(`Gemini API error (Attempt ${retries}/${maxRetries}):`, error.message);
-      if (retries >= maxRetries) {
-        throw new Error(`Failed to generate BVA after ${maxRetries} attempts: ${error.message}`);
+      const message = error?.message || String(error);
+      console.error(`Gemini generation error (Attempt ${retries}/${maxRetries}) with model ${modelCandidates[currentModelIndex]}:`, message);
+
+      const shouldTryNextModel = /not found|not supported|Too Many Requests|quota/i.test(message);
+      if (shouldTryNextModel && currentModelIndex + 1 < modelCandidates.length) {
+        currentModelIndex += 1;
+        model = createModel(modelCandidates[currentModelIndex]);
+        console.warn(`Switching Gemini model to ${modelCandidates[currentModelIndex]} and retrying.`);
+        continue;
       }
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
+
+      if (retries >= maxRetries) {
+        throw new Error(`Gemini failed after ${maxRetries} attempts: ${message}`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retries) * 1000));
     }
   }
 }
 
 module.exports = {
-  analyzeBoundaryValues,
+  generateText,
+  sanitizeJsonString,
 };
