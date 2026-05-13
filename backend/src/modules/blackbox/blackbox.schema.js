@@ -12,7 +12,7 @@ const scriptSchema = z.object({
 });
 
 const exportSchema = z.object({
-  format: z.enum(["PDF", "DOCX", "JSON", "ZIP"]),
+  format: z.enum(["PDF", "DOCX", "JSON", "ZIP", "XLSX"]),
   payload: z.any(),
 });
 
