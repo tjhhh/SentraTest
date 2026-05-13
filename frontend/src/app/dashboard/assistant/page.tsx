@@ -20,7 +20,7 @@ import { useAuthStore } from '@/store/authStore';
 import { api } from '@/services/api';
 
 interface Message {
-  role: 'assistant' | 'user';
+  role: 'assistant' | 'user' | 'ASSISTANT' | 'USER';
   content: string;
   time: string;
 }
@@ -35,12 +35,12 @@ export default function AssistantPage() {
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatId, setChatId] = useState<string | null>(null);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chatList, setChatList] = useState<Chat[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingChats, setIsLoadingChats] = useState(false);
-  const activeConversation: { title: string } | null = null;
+  const activeConversation = chatList.find(c => c.id === chatId) || null;
   const BUG_TEMPLATE = 'Please describe the bug you would like analyzed.';
   const STRATEGY_TEMPLATE = 'Please suggest a testing strategy for the current scenario.';
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -49,9 +49,11 @@ export default function AssistantPage() {
   useEffect(() => {
     if (user?.id) {
       setIsLoadingChats(true);
-      api.get<{ data: Chat[] }>('/chats')
+      api.get<Chat[]>('/chats')
         .then(data => {
-          setChats(data);
+          if (Array.isArray(data)) {
+            setChatList(data);
+          }
         })
         .catch(err => {
           console.error("Failed to fetch chats", err);
@@ -75,10 +77,12 @@ export default function AssistantPage() {
             }
           ]);
           // Refresh chats list
-          return api.get<{ data: Chat[] }>(`/chats?userId=${user.id}`);
+          return api.get<Chat[]>(`/chats?userId=${user.id}`);
         })
         .then(data => {
-          if (data) setChats(data);
+          if (Array.isArray(data)) {
+            setChatList(data);
+          }
         })
         .catch(err => {
           console.error("Failed to create chat", err);
@@ -140,9 +144,9 @@ export default function AssistantPage() {
   const loadChat = (id: string) => {
     setChatId(id);
     setIsLoading(true);
-    api.get<{ data: any[] }>(`/chats/${id}/messages`)
+    api.get<any[]>(`/chats/${id}/messages`)
       .then(data => {
-        const mappedMessages: Message[] = data.data.map(msg => ({
+        const mappedMessages: Message[] = data.map(msg => ({
           role: msg.role,
           content: msg.content,
           time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -181,10 +185,10 @@ export default function AssistantPage() {
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" />
             </div>
-          ) : chats.length === 0 ? (
+          ) : chatList.length === 0 ? (
             <p className="text-xs text-slate-500 text-center py-4">No conversations yet.</p>
           ) : (
-            chats.map(chat => (
+            chatList.map(chat => (
               <button
                 key={chat.id}
                 onClick={() => loadChat(chat.id)}

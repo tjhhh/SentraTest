@@ -5,8 +5,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including @playwright/test from devDependencies)
+# Install all dependencies including devDependencies for building
 RUN npm install
+
+# Also explicitly ensure @playwright/test is available for runtime
+RUN npm install @playwright/test --save-optional
 
 # Install only Chromium and its system dependencies
 RUN npx playwright install chromium --with-deps

@@ -22,12 +22,15 @@ services:
     container_name: sentra-backend
     shm_size: '2gb'
     ipc: host
+    env_file: .env
     environment:
       NODE_ENV: development
       PORT: 4000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sentra_test?schema=public
       JWT_ACCESS_SECRET: replace-with-access-secret-32chars
       JWT_REFRESH_SECRET: replace-with-refresh-secret-32chars
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
       CORS_ORIGINS: http://localhost:3000
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       GEMINI_MODEL: ${GEMINI_MODEL}
@@ -39,6 +42,19 @@ services:
       postgres:
         condition: service_healthy
     command: [ "sh", "-c", "npx prisma migrate deploy && node src/server.js" ]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:4000
+    container_name: sentra-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
 
 volumes:
   sentra-postgres-data:

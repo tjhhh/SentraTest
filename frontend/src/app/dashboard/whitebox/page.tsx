@@ -18,6 +18,8 @@ import { EvidenceGallery } from '@/components/EvidenceGallery';
 import TestResults, { TestStats, TestResult } from '@/components/TestResults';
 
 import { useAuthStore } from '@/store/authStore';
+import { useConversationStore } from '@/store/conversationStore';
+import { wbService } from '@/services/wb.service';
 
 import { buildApiUrl } from '@/config/api';
 
@@ -35,6 +37,7 @@ interface TestStep {
 
 export default function WhiteboxPage() {
   const token = useAuthStore((state) => state.token);
+  const { activeConversation } = useConversationStore();
 
   const [logicCode, setLogicCode] = useState(`function calculateDiscount(price, type) {
   if (price > 100) {
