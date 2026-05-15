@@ -28,7 +28,7 @@ jobs:
         working-directory: backend
         
       - name: Run Tests
-        run: npm test || echo "No tests or tests failed, but continuing CI"
+        run: npm run test || echo "No tests or tests failed, but continuing CI"
         working-directory: backend
 
   frontend-check:

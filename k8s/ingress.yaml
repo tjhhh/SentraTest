@@ -3,9 +3,8 @@ kind: Ingress
 metadata:
   name: sentra-ingress
   namespace: blind-spot
-  annotations:
-    kubernetes.io/ingress.class: nginx
 spec:
+  ingressClassName: nginx
   rules:
   - host: blind-spot.hackathon.sev-2.com
     http:
